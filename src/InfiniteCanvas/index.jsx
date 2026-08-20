@@ -7,14 +7,45 @@ import './index.css'
  *  - 暖米白纸张背景 + 淡灰色点阵网格
  *  - 拖拽平移（鼠标左键按住空白区域）
  *  - 滚轮缩放（以鼠标位置为中心）
+ *
+ * 支持受控 / 非受控两种模式：
+ *  - 受控：由父层（App）持有 scale & offset，通过 onTransformChange 回写
+ *  - 非受控：未提供对应 props 时，组件内部自管
  */
-function InfiniteCanvas() {
+function InfiniteCanvas({
+  scale: scaleProp,
+  offset: offsetProp,
+  onTransformChange,
+  onContainerReady,
+}) {
   const containerRef = useRef(null)
   const canvasRef = useRef(null)
 
-  // 画布状态：缩放比例 + 偏移量（画布坐标 → 屏幕坐标换算的核心）
-  const [scale, setScale] = useState(1)
-  const [offset, setOffset] = useState({ x: 0, y: 0 })
+  // 通过 useCallback ref 的方式将容器 DOM 暴露给父组件
+  const setContainerRef = useCallback((el) => {
+    containerRef.current = el
+    if (onContainerReady) {
+      onContainerReady(el)
+    }
+  }, [onContainerReady])
+
+  const scaleControlled = scaleProp !== undefined
+  const offsetControlled = offsetProp !== undefined
+
+  const [innerScale, setInnerScale] = useState(1)
+  const [innerOffset, setInnerOffset] = useState({ x: 0, y: 0 })
+
+  const scale = scaleControlled ? scaleProp : innerScale
+  const offset = offsetControlled ? offsetProp : innerOffset
+
+  const updateTransform = useCallback((nextScale, nextOffset) => {
+    if (onTransformChange) {
+      onTransformChange(nextScale, nextOffset)
+    } else {
+      if (!scaleControlled) setInnerScale(nextScale)
+      if (!offsetControlled && nextOffset) setInnerOffset(nextOffset)
+    }
+  }, [onTransformChange, scaleControlled, offsetControlled])
 
   // 右键菜单状态
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 })
@@ -223,7 +254,7 @@ function InfiniteCanvas() {
       y: dragStartRef.current.offsetY + dy,
     }
     offsetRef.current = newOffset
-    setOffset(newOffset)
+    updateTransform(scaleRef.current, newOffset)
   }
 
   /** ===== 交互：鼠标抬起 / 离开画布，结束拖拽 ===== */
@@ -256,16 +287,14 @@ function InfiniteCanvas() {
 
     scaleRef.current = newScale
     offsetRef.current = newOffset
-    setScale(newScale)
-    setOffset(newOffset)
+    updateTransform(newScale, newOffset)
   }
 
   /** ===== 点击缩放指示器恢复 100% ===== */
   const handleResetZoom = () => {
     scaleRef.current = 1
     offsetRef.current = { x: 0, y: 0 }
-    setScale(1)
-    setOffset({ x: 0, y: 0 })
+    updateTransform(1, { x: 0, y: 0 })
   }
 
   /** ===== 右键菜单 ===== */
@@ -294,7 +323,7 @@ function InfiniteCanvas() {
 
   return (
     <div
-      ref={containerRef}
+      ref={setContainerRef}
       className="infinite-canvas-container"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}

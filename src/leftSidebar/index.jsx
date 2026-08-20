@@ -1,13 +1,10 @@
-import { useState } from 'react'
 import './index.css'
 
 /**
  * 左侧工具栏组件 - 无限画布任务管理器
  * 仿 Figma / Excalidraw 风格的垂直工具栏
  */
-function LeftSidebar() {
-  const [activeTool, setActiveTool] = useState('select')
-
+function LeftSidebar({ activeTool, onToolChange, isToolLocked }) {
   const tools = [
     { id: 'palette', icon: 'bi-palette-fill', label: '调色板', topGradient: true },
     { id: 'select', icon: 'bi-pointer', label: '选择' },
@@ -24,32 +21,41 @@ function LeftSidebar() {
   ]
 
   const handleToolClick = (toolId) => {
-    setActiveTool(toolId)
+    onToolChange?.(toolId)
   }
 
   return (
     <aside className="left-sidebar" aria-label="左侧工具栏">
       <div className="left-sidebar-inner">
         <div className="sidebar-tools-top">
-          {tools.map((tool, index) => (
-            <button
-              key={tool.id}
-              className={`sidebar-tool-btn ${activeTool === tool.id ? 'active' : ''} ${tool.topGradient ? 'has-top-gradient' : ''} ${tool.stickyNote ? 'is-sticky' : ''} ${tool.custom || ''}`}
-              onClick={() => handleToolClick(tool.id)}
-              title={tool.label}
-              aria-label={tool.label}
-              data-index={index}
-            >
-              {tool.topGradient && (
-                <span className="top-gradient-bar" aria-hidden="true">
-                  <span className="grad-1" />
-                  <span className="grad-2" />
-                  <span className="grad-3" />
-                </span>
-              )}
-              <i className={`bi ${tool.icon}`} aria-hidden="true" />
-            </button>
-          ))}
+          {tools.map((tool, index) => {
+            const isActive = activeTool === tool.id
+            const showLock = isToolLocked && isActive
+            return (
+              <button
+                key={tool.id}
+                className={`sidebar-tool-btn ${isActive ? 'active' : ''} ${tool.topGradient ? 'has-top-gradient' : ''} ${tool.stickyNote ? 'is-sticky' : ''} ${tool.custom || ''} ${showLock ? 'is-locked' : ''}`}
+                onClick={() => handleToolClick(tool.id)}
+                title={`${tool.label}${showLock ? '（已锁定）' : ''}`}
+                aria-label={tool.label}
+                data-index={index}
+              >
+                {tool.topGradient && (
+                  <span className="top-gradient-bar" aria-hidden="true">
+                    <span className="grad-1" />
+                    <span className="grad-2" />
+                    <span className="grad-3" />
+                  </span>
+                )}
+                <i className={`bi ${tool.icon}`} aria-hidden="true" />
+                {showLock && (
+                  <span className="tool-lock-indicator" aria-hidden="true">
+                    <i className="bi bi-lock-fill" />
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
         <div className="sidebar-tools-bottom">
           <button

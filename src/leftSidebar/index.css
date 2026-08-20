@@ -321,3 +321,49 @@
   opacity: 0;
   transform: translateX(-10px);
 }
+
+/* ========== 工具锁定状态 ========== */
+.sidebar-tool-btn.is-locked.active {
+  position: relative;
+}
+
+.sidebar-tool-btn.is-locked.active::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(251, 191, 36, 0.5);
+  animation: lock-indicator-pulse 2s ease-in-out infinite;
+}
+
+@keyframes lock-indicator-pulse {
+  0%, 100% {
+    box-shadow: 0 1px 3px rgba(251, 191, 36, 0.5);
+  }
+  50% {
+    box-shadow: 0 1px 6px rgba(251, 191, 36, 0.9);
+  }
+}
+
+.tool-lock-indicator {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 50%;
+  color: #fff;
+}
+
+.tool-lock-indicator i {
+  font-size: 7px;
+  color: #fff;
+}
