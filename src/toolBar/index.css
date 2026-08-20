@@ -20,17 +20,17 @@
               0 0 0 1px rgba(0, 0, 0, 0.02) inset;
   pointer-events: auto;
   backdrop-filter: blur(8px);
-  animation: toolbar-slide-down 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: toolbar-slide-down 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
 @keyframes toolbar-slide-down {
   from {
     opacity: 0;
-    transform: translate(-50%, -10px);
+    transform: translateY(-10px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, 0);
+    transform: translateY(0);
   }
 }
 
