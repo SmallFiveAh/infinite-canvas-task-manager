@@ -56,13 +56,11 @@ function InfiniteCanvas({
   const scaleRef = useRef(1)
   const offsetRef = useRef({ x: 0, y: 0 })
 
-  // Excalidraw 风格网格参数（加深版）
+  // 点阵网格参数
   const BASE_GRID = 20
   const BASE_DOT_RADIUS = 1.4
   const DRAW_INTERVAL_THRESHOLD = 10
   const MAX_DOTS_ON_SCREEN = 8000
-  const MIN_MINOR_ALPHA = 0.12   // 降低 alpha 卸载门槛，让次点保留更久
-  const MIN_MINOR_R = 1.0        // 提高次点最小半径，缩小时不致过小
 
   // 同步 ref，供事件回调使用最新值
   useEffect(() => { scaleRef.current = scale }, [scale])
@@ -75,35 +73,21 @@ function InfiniteCanvas({
     const step = BASE_GRID
     const screenGap = step * curScale
 
-    // 主点层级：每 N 个次点一个主点
-    const majorEvery = 5
-
-    // 点半径：缩小时有更高下限，不会变得太小
     const ratio = screenGap / 20
-    // 引入非线性：缩小时下降更慢，放大时更接近线性
     const shrinkProtect = ratio < 1 ? Math.pow(ratio, 0.6) : ratio
-    const minorR = Math.max(1.0, Math.min(2.4, BASE_DOT_RADIUS * shrinkProtect))
-    const majorR = Math.max(1.8, minorR * 1.8)
+    const dotR = Math.max(1.2, Math.min(2.4, BASE_DOT_RADIUS * shrinkProtect))
 
-    // 透明度：缩小时也不会变得太淡
     const normGap = screenGap / 20
-    const minorAlpha = Math.max(0.14, Math.min(0.55, 0.35 * (normGap < 1 ? Math.pow(normGap, 0.5) : normGap)))
-    const majorAlpha = Math.max(0.28, Math.min(0.85, 0.55 * Math.sqrt(normGap)))
-
-    // 分级卸载 1：次点太小/太淡 → 卸载次点
-    const hideMinor = minorAlpha < MIN_MINOR_ALPHA || minorR < MIN_MINOR_R
-
-    const unitStep = hideMinor ? step * majorEvery : step
-    const unitScreenGap = unitStep * curScale
+    const dotAlpha = Math.max(0.50, Math.min(0.7, 0.5 * (normGap < 1 ? Math.pow(normGap, 0.5) : normGap)))
 
     // 计算 drawInterval
     let drawInterval = 1
-    if (unitScreenGap < DRAW_INTERVAL_THRESHOLD) {
-      drawInterval = Math.ceil(DRAW_INTERVAL_THRESHOLD / unitScreenGap)
+    if (screenGap < DRAW_INTERVAL_THRESHOLD) {
+      drawInterval = Math.ceil(DRAW_INTERVAL_THRESHOLD / screenGap)
     }
 
-    // 分级卸载 2：屏幕点数上限保护
-    const realStep = unitStep * drawInterval
+    // 屏幕点数上限保护
+    const realStep = step * drawInterval
     const cols = Math.ceil(viewW / realStep) + 2
     const rows = Math.ceil(viewH / realStep) + 2
     const estDots = cols * rows
@@ -114,15 +98,9 @@ function InfiniteCanvas({
 
     return {
       step,
-      majorEvery,
-      minorR,
-      majorR,
-      screenGap,
+      dotR,
       drawInterval,
-      hideMinor,
-      unitStep,
-      minorAlpha,
-      majorAlpha,
+      dotAlpha,
     }
   }
 
@@ -161,19 +139,9 @@ function InfiniteCanvas({
     const viewBottom = viewTop + viewH
 
     const metrics = deriveGridMetrics(curScale, viewW, viewH)
-    const {
-      step,
-      majorEvery,
-      minorR,
-      majorR,
-      drawInterval,
-      hideMinor,
-      unitStep,
-      minorAlpha,
-      majorAlpha,
-    } = metrics
+    const { step, dotR, drawInterval, dotAlpha } = metrics
 
-    const realStep = unitStep * drawInterval
+    const realStep = step * drawInterval
 
     const pad = realStep
     const startX = Math.floor((viewLeft - pad) / realStep) * realStep
@@ -181,38 +149,17 @@ function InfiniteCanvas({
     const endX = Math.ceil((viewRight + pad) / realStep) * realStep
     const endY = Math.ceil((viewBottom + pad) / realStep) * realStep
 
-    // 加深版暖灰色网格点（stone 色系加深 1~2 级）
-    const minorColor = `rgba(168, 162, 158, ${minorAlpha.toFixed(3)})`
-    const majorColor = `rgba(120, 113, 108, ${majorAlpha.toFixed(3)})`
+    const dotColor = `rgba(148, 142, 138, ${dotAlpha.toFixed(3)})`
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-
-    if (hideMinor) {
-      for (let gx = startX; gx <= endX; gx += realStep) {
-        for (let gy = startY; gy <= endY; gy += realStep) {
-          const sx = gx * curScale + curOffset.x
-          const sy = gy * curScale + curOffset.y
-          ctx.beginPath()
-          ctx.arc(sx, sy, majorR, 0, Math.PI * 2)
-          ctx.fillStyle = majorColor
-          ctx.fill()
-        }
-      }
-      return
-    }
 
     for (let gx = startX; gx <= endX; gx += realStep) {
       for (let gy = startY; gy <= endY; gy += realStep) {
         const sx = gx * curScale + curOffset.x
         const sy = gy * curScale + curOffset.y
-
-        const isMajor =
-          Math.round(gx / step) % majorEvery === 0 &&
-          Math.round(gy / step) % majorEvery === 0
-
         ctx.beginPath()
-        ctx.arc(sx, sy, isMajor ? majorR : minorR, 0, Math.PI * 2)
-        ctx.fillStyle = isMajor ? majorColor : minorColor
+        ctx.arc(sx, sy, dotR, 0, Math.PI * 2)
+        ctx.fillStyle = dotColor
         ctx.fill()
       }
     }
