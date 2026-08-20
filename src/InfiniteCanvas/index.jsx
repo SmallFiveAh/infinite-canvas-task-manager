@@ -276,7 +276,7 @@ function InfiniteCanvas() {
     >
       <canvas ref={canvasRef} className="infinite-canvas-canvas" />
       <div className="infinite-canvas-hud" onClick={handleResetZoom} role="button" tabIndex={0} title="点击恢复到 100%">
-        <span className="hud-icon">⊕</span>
+        <i className="hud-icon bi bi-arrows-fullscreen" aria-hidden="true" />
         <span className="hud-text">{(scale * 100).toFixed(0)}%</span>
       </div>
     </div>
