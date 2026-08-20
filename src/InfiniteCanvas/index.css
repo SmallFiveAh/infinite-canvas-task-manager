@@ -3,10 +3,21 @@
   width: 100%;
   height: 100vh;
   overflow: hidden;
-  background: #0f172a;
+  background: var(--bg-canvas);
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.infinite-canvas-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(251, 191, 36, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(96, 165, 250, 0.04) 0%, transparent 50%);
 }
 
 .infinite-canvas-container:active {
@@ -17,29 +28,52 @@
   position: absolute;
   inset: 0;
   display: block;
+  z-index: 1;
 }
 
 .infinite-canvas-hud {
   position: absolute;
-  right: 16px;
-  bottom: 16px;
-  padding: 6px 12px;
-  font-size: 12px;
-  line-height: 1;
-  color: #cbd5e1;
-  background: rgba(30, 41, 59, 0.85);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  border-radius: 6px;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  right: 20px;
+  bottom: 20px;
+  z-index: 10;
+  padding: 8px 16px;
+  font-size: 15px;
+  line-height: 1.2;
+  color: var(--ink-secondary);
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   pointer-events: auto;
   cursor: pointer;
   user-select: none;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  font-family: var(--font-hand);
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .infinite-canvas-hud:hover {
-  background: rgba(51, 65, 85, 0.95);
-  border-color: rgba(148, 163, 184, 0.5);
+  border-color: var(--ui-border-strong);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+}
+
+.infinite-canvas-hud:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.hud-icon {
+  font-size: 14px;
+  color: var(--ink-muted);
+  line-height: 1;
+}
+
+.hud-text {
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
