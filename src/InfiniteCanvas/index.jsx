@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
+import ContextMenu from '../contextMenu'
 import './index.css'
 
 /**
@@ -14,6 +15,9 @@ function InfiniteCanvas() {
   // 画布状态：缩放比例 + 偏移量（画布坐标 → 屏幕坐标换算的核心）
   const [scale, setScale] = useState(1)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
+
+  // 右键菜单状态
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 })
 
   // 交互状态（使用 ref 避免频繁 re-render）
   const isDraggingRef = useRef(false)
@@ -264,6 +268,30 @@ function InfiniteCanvas() {
     setOffset({ x: 0, y: 0 })
   }
 
+  /** ===== 右键菜单 ===== */
+  const handleContextMenu = (e) => {
+    e.preventDefault()
+    setContextMenu({ visible: true, x: e.clientX, y: e.clientY })
+  }
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu((prev) => (prev.visible ? { ...prev, visible: false } : prev))
+  }, [])
+
+  useEffect(() => {
+    if (!contextMenu.visible) return
+    const handleClickOutside = () => closeContextMenu()
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') closeContextMenu()
+    }
+    window.addEventListener('click', handleClickOutside)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('click', handleClickOutside)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [contextMenu.visible, closeContextMenu])
+
   return (
     <div
       ref={containerRef}
@@ -273,12 +301,18 @@ function InfiniteCanvas() {
       onMouseUp={endDrag}
       onMouseLeave={endDrag}
       onWheel={handleWheel}
+      onContextMenu={handleContextMenu}
     >
       <canvas ref={canvasRef} className="infinite-canvas-canvas" />
       <div className="infinite-canvas-hud" onClick={handleResetZoom} role="button" tabIndex={0} title="点击恢复到 100%">
         <i className="hud-icon bi bi-arrows-fullscreen" aria-hidden="true" />
         <span className="hud-text">{(scale * 100).toFixed(0)}%</span>
       </div>
+      <ContextMenu
+        visible={contextMenu.visible}
+        position={{ x: contextMenu.x, y: contextMenu.y }}
+        onClose={closeContextMenu}
+      />
     </div>
   )
 }
