@@ -226,7 +226,6 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked, createStickyNote,
         const s = scale || 1
         const w = DEFAULT_STICKY.width * s
         const h = DEFAULT_STICKY.height * s
-        const fold = 14 * s
         return createPortal(
           <div
             className="sticky-drag-preview"
@@ -238,16 +237,7 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked, createStickyNote,
               background: DEFAULT_STICKY.bg,
               borderColor: DEFAULT_STICKY.border,
             }}
-          >
-            <span
-              className="sticky-drag-preview-fold"
-              style={{
-                width: fold,
-                height: fold,
-                background: `linear-gradient(135deg, transparent 50%, ${DEFAULT_STICKY.border} 50%, ${DEFAULT_STICKY.border} 100%)`,
-              }}
-            />
-          </div>,
+          />,
           document.body
         )
       })()}

@@ -137,19 +137,6 @@
               border-color 0.15s ease;
 }
 
-.sticky-swatch::before {
-  /* 右上角折叠角效果 */
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 10px;
-  height: 10px;
-  background: linear-gradient(135deg, transparent 50%, currentColor 50%);
-  opacity: 0.35;
-  pointer-events: none;
-}
-
 .sticky-swatch.square {
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -162,21 +149,9 @@
   border-radius: 7px;
 }
 
-.sticky-swatch.square::before {
-  border-radius: 0 6px 0 0;
-}
-
-.sticky-swatch.rectangle::before {
-  border-radius: 0 6px 0 0;
-}
-
 .sticky-swatch.irregular {
   border-radius: 6px 10px 7px 9px;
   transform: rotate(-0.5deg);
-}
-
-.sticky-swatch.irregular::before {
-  border-radius: 0 9px 0 0;
 }
 
 .sticky-swatch:hover {

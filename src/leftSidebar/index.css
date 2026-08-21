@@ -176,15 +176,6 @@
   animation: sticky-preview-pop 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.sticky-drag-preview-fold {
-  position: absolute;
-  top: 0;
-  right: 0;
-  border-radius: 0 8px 0 0;
-  opacity: 0.6;
-  pointer-events: none;
-}
-
 @keyframes sticky-preview-pop {
   from {
     opacity: 0;
