@@ -250,25 +250,11 @@
   text-align: center;
 }
 
-.zoom-chevron {
-  font-size: 11px;
-  color: var(--ink-muted);
-  transition: transform 0.2s ease;
-}
-
-.zoom-chevron.open {
-  transform: rotate(180deg);
-}
-
-.zoom-picker:hover .zoom-chevron {
-  color: var(--ink-secondary);
-}
-
 /* ========== 缩放下拉菜单 ========== */
 .zoom-menu {
   position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
+  top: calc(100% + 12px);
+  right: -45px;
   min-width: 150px;
   padding: 6px;
   background: var(--ui-surface);

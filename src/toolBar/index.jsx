@@ -165,7 +165,6 @@ function Toolbar({ scale = 1, offset = { x: 0, y: 0 }, canvasContainerRef, onTra
                 aria-expanded={zoomMenuOpen}
               >
                 <span className="zoom-value">{currentZoom}%</span>
-                <i className={`bi bi-chevron-down zoom-chevron ${zoomMenuOpen ? 'open' : ''}`} aria-hidden="true" />
               </button>
               {zoomMenuOpen && (
                 <div className="zoom-menu" role="listbox">
