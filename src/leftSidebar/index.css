@@ -158,6 +158,44 @@
   color: #f59e0b;
 }
 
+/* ========== 便签拖动预览（跟随鼠标） ========== */
+/* 注：通过 createPortal 渲染到 document.body，规避 .left-sidebar
+   的 transform 创建的 containing block，确保以视口为基准定位 */
+.sticky-drag-preview {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  pointer-events: none;
+  border: 1.5px solid;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18),
+              0 2px 6px rgba(0, 0, 0, 0.08);
+  opacity: 0.92;
+  user-select: none;
+  animation: sticky-preview-pop 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.sticky-drag-preview-fold {
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-radius: 0 8px 0 0;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@keyframes sticky-preview-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 0.92;
+    transform: scale(1);
+  }
+}
+
 /* ========== 铅笔工具 - 弯曲效果 ========== */
 .pencil-curved i {
   transform: rotate(-20deg) translateY(-1px);

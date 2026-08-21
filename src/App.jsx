@@ -104,6 +104,7 @@ function App() {
         isToolLocked={isToolLocked}
         createStickyNote={createStickyNote}
         screenToCanvas={screenToCanvas}
+        scale={scale}
       />
       <InfiniteCanvas
         scale={scale}

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import StickyPalette, { DEFAULT_STICKY } from '../stickyPalette'
 import './index.css'
 
@@ -10,7 +11,7 @@ import './index.css'
  *  - 按住并拖动：直接在拖放位置创建橙色默认便签
  *  - 单击（无拖动）：弹出便签样式面板，选择自定义样式
  */
-function LeftSidebar({ activeTool, onToolChange, isToolLocked, createStickyNote, screenToCanvas }) {
+function LeftSidebar({ activeTool, onToolChange, isToolLocked, createStickyNote, screenToCanvas, scale }) {
   const tools = [
     { id: 'palette', icon: 'bi-circle-square', label: '形状与流程图' },
     { id: 'text', icon: 'bi-type', label: '文字', framed: true },
@@ -25,6 +26,8 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked, createStickyNote,
 
   // 便签面板显隐
   const [stickyPaletteVisible, setStickyPaletteVisible] = useState(false)
+  // 便签拖动预览（屏幕坐标），拖动过程中实时跟随鼠标
+  const [stickyPreview, setStickyPreview] = useState(null) // { x, y } | null
   // 便签按钮 DOM 引用（用于定位面板）
   const stickyBtnRef = useRef(null)
 
@@ -59,6 +62,10 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked, createStickyNote,
     if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
       state.moved = true
     }
+    // 一旦判定为拖动，实时更新预览位置（让便签跟随鼠标）
+    if (state.moved) {
+      setStickyPreview({ x: e.clientX, y: e.clientY })
+    }
   }, [])
 
   const handleStickyMouseUp = useCallback((e) => {
@@ -67,6 +74,7 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked, createStickyNote,
     const wasMoved = state.moved
     state.isDragging = false
     state.moved = false
+    setStickyPreview(null)
 
     if (wasMoved) {
       // 拖放：在鼠标位置创建默认橙色便签
@@ -91,6 +99,19 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked, createStickyNote,
       window.removeEventListener('mouseup', onUp)
     }
   }, [handleStickyMouseMove, handleStickyMouseUp])
+
+  // 拖动过程中：把 body 光标改为 grabbing，避免文字选中
+  useEffect(() => {
+    if (!stickyPreview) return
+    const prevCursor = document.body.style.cursor
+    const prevSelect = document.body.style.userSelect
+    document.body.style.cursor = 'grabbing'
+    document.body.style.userSelect = 'none'
+    return () => {
+      document.body.style.cursor = prevCursor
+      document.body.style.userSelect = prevSelect
+    }
+  }, [stickyPreview])
 
   // 便签面板：外部点击 / Esc 关闭
   const paletteWrapRef = useRef(null)
@@ -199,6 +220,37 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked, createStickyNote,
           onSelect={handleStickyPaletteSelect}
         />
       )}
+
+      {/* 便签拖动预览：跟随鼠标显示，松开后落到画布 */}
+      {stickyPreview && (() => {
+        const s = scale || 1
+        const w = DEFAULT_STICKY.width * s
+        const h = DEFAULT_STICKY.height * s
+        const fold = 14 * s
+        return createPortal(
+          <div
+            className="sticky-drag-preview"
+            style={{
+              left: stickyPreview.x - w / 2,
+              top: stickyPreview.y - h / 2,
+              width: w,
+              height: h,
+              background: DEFAULT_STICKY.bg,
+              borderColor: DEFAULT_STICKY.border,
+            }}
+          >
+            <span
+              className="sticky-drag-preview-fold"
+              style={{
+                width: fold,
+                height: fold,
+                background: `linear-gradient(135deg, transparent 50%, ${DEFAULT_STICKY.border} 50%, ${DEFAULT_STICKY.border} 100%)`,
+              }}
+            />
+          </div>,
+          document.body
+        )
+      })()}
     </aside>
   )
 }
