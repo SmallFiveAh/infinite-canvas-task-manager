@@ -342,10 +342,30 @@ function InfiniteCanvas({
   }, [elements])
 
   /** ===== 交互：鼠标按下 =====
-   *  优先检测是否点中便签元素 → 拖拽元素
-   *  否则：hand 模式平移画布 / select 模式框选
+   *  中键（button === 1）：select 模式下平移画布，优先级最高，
+   *                       覆盖元素拖拽 / 框选交互；hand 模式下不触发（左键已可平移）
+   *  左键（button === 0）：优先检测是否点中便签元素 → 拖拽元素
+   *                       否则：hand 模式平移画布 / select 模式框选
    */
   const handleMouseDown = (e) => {
+    // 中键拖拽：仅 select 模式下提供平移画布的快捷方式
+    // （hand 模式下左键已可平移，中键无需重复此功能）
+    if (e.button === 1) {
+      e.preventDefault() // 始终阻止浏览器默认的自动滚动行为
+      if (viewModeRef.current === 'hand') return
+      const container = containerRef.current
+      if (!container) return
+      isDraggingRef.current = true
+      dragStartRef.current = {
+        screenX: e.clientX,
+        screenY: e.clientY,
+        offsetX: offsetRef.current.x,
+        offsetY: offsetRef.current.y,
+      }
+      container.style.cursor = 'grabbing'
+      return
+    }
+
     if (e.button !== 0) return
     const container = containerRef.current
     if (!container) return
