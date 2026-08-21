@@ -195,7 +195,45 @@
 
 /* ========== 表格图标微调 ========== */
 .table-icon i {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
   font-size: 18px;
+  background:
+    /* 第一行 - 绿色 */
+    radial-gradient(circle at 22% 22%, #22c55e 2.2px, transparent 2.4px),
+    radial-gradient(circle at 50% 22%, #22c55e 2.2px, transparent 2.4px),
+    radial-gradient(circle at 78% 22%, #22c55e 2.2px, transparent 2.4px),
+    /* 第二行 - 黑色 */
+    radial-gradient(circle at 22% 50%, var(--ink-secondary) 2.2px, transparent 2.4px),
+    radial-gradient(circle at 50% 50%, var(--ink-secondary) 2.2px, transparent 2.4px),
+    radial-gradient(circle at 78% 50%, var(--ink-secondary) 2.2px, transparent 2.4px),
+    /* 第三行 - 黑色 */
+    radial-gradient(circle at 22% 78%, var(--ink-secondary) 2.2px, transparent 2.4px),
+    radial-gradient(circle at 50% 78%, var(--ink-secondary) 2.2px, transparent 2.4px),
+    radial-gradient(circle at 78% 78%, var(--ink-secondary) 2.2px, transparent 2.4px);
+}
+
+/* 隐藏字体图标原本的字符，只显示上面的点阵背景 */
+.table-icon i::before {
+  display: none;
+}
+
+/* 激活状态下第二、三行加深颜色 */
+.table-icon.active i {
+  background:
+    /* 第一行 - 绿色 */
+    radial-gradient(circle at 22% 22%, #16a34a 2.2px, transparent 2.4px),
+    radial-gradient(circle at 50% 22%, #16a34a 2.2px, transparent 2.4px),
+    radial-gradient(circle at 78% 22%, #16a34a 2.2px, transparent 2.4px),
+    /* 第二行 - 深色 */
+    radial-gradient(circle at 22% 50%, var(--ink-primary) 2.2px, transparent 2.4px),
+    radial-gradient(circle at 50% 50%, var(--ink-primary) 2.2px, transparent 2.4px),
+    radial-gradient(circle at 78% 50%, var(--ink-primary) 2.2px, transparent 2.4px),
+    /* 第三行 - 深色 */
+    radial-gradient(circle at 22% 78%, var(--ink-primary) 2.2px, transparent 2.4px),
+    radial-gradient(circle at 50% 78%, var(--ink-primary) 2.2px, transparent 2.4px),
+    radial-gradient(circle at 78% 78%, var(--ink-primary) 2.2px, transparent 2.4px);
 }
 
 /* ========== 文档图标微调 ========== */
