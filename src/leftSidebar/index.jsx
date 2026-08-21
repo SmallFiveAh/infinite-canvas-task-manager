@@ -205,34 +205,60 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked, createStickyNote,
 
 /**
  * 便签面板 Popover - 定位在便签按钮右侧
+ *
+ * 注：因外层 .left-sidebar 有 transform: translateY(-50%)，
+ * 子元素的 position:fixed 不再以 viewport 为基准（会被 transform 创建 containing block）。
+ * 所以改用 position:absolute 相对 .left-sidebar 本身定位，
+ * 并通过「按钮 rect - sidebar rect」换算 sidebar 内的局部坐标。
  */
 function StickyPalettePopover({ anchorRef, wrapRef, onSelect }) {
   const [pos, setPos] = useState({ left: 0, top: 0 })
+  const [ready, setReady] = useState(false)
+
+  const updatePos = useCallback(() => {
+    const btnEl = anchorRef?.current
+    if (!btnEl) return
+    // 向上找到最近的 fixed/absolute 定位祖先（即 .left-sidebar 或其 wrapper）
+    let sidebarEl = btnEl
+    while (
+      sidebarEl &&
+      sidebarEl.tagName !== 'ASIDE' &&
+      sidebarEl.className &&
+      typeof sidebarEl.className === 'string' &&
+      !sidebarEl.className.includes('left-sidebar')
+    ) {
+      sidebarEl = sidebarEl.parentElement
+    }
+    // 兜底：直接拿上层 aside
+    if (!sidebarEl || !sidebarEl.getBoundingClientRect) sidebarEl = btnEl.closest('.left-sidebar, aside')
+    if (!sidebarEl) return
+    const btnRect = btnEl.getBoundingClientRect()
+    const sbRect = sidebarEl.getBoundingClientRect()
+    // 局部坐标：相对 sidebar 容器左上角
+    const localLeft = (btnRect.right - sbRect.left) + 12
+    const localTop = (btnRect.top - sbRect.top) - 4
+    setPos({ left: localLeft, top: localTop })
+    setReady(true)
+  }, [anchorRef])
 
   useEffect(() => {
-    const updatePos = () => {
-      const el = anchorRef?.current
-      if (!el) return
-      const rect = el.getBoundingClientRect()
-      // 定位在按钮右侧，垂直居中对齐（面板左上角约在按钮中间高度）
-      setPos({
-        left: rect.right + 12,
-        top: rect.top + rect.height / 2,
-      })
-    }
     updatePos()
+    const raf1 = requestAnimationFrame(updatePos)
+    const raf2 = requestAnimationFrame(() => requestAnimationFrame(updatePos))
     window.addEventListener('resize', updatePos)
     window.addEventListener('scroll', updatePos, true)
     return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
       window.removeEventListener('resize', updatePos)
       window.removeEventListener('scroll', updatePos, true)
     }
-  }, [anchorRef])
+  }, [updatePos])
 
   return (
     <div
       ref={wrapRef}
-      className="sticky-palette-popover-wrap"
+      className={`sticky-palette-popover-wrap ${ready ? 'is-ready' : ''}`}
       style={{
         left: pos.left,
         top: pos.top,

@@ -1,20 +1,29 @@
 /* ========== 便签样式面板 Popover 定位包装 ========== */
 .sticky-palette-popover-wrap {
-  position: fixed;
-  transform: translateY(-50%);
+  /* 注意：父级 .left-sidebar 有 transform，子元素 fixed 会退化，
+     因此使用 absolute 相对 .left-sidebar（本身是 fixed 容器）定位 */
+  position: absolute;
   z-index: 1000;
   pointer-events: auto;
+  /* 位置未就绪前隐藏，避免闪烁 */
+  opacity: 0;
+  visibility: hidden;
+}
+
+.sticky-palette-popover-wrap.is-ready {
+  opacity: 1;
+  visibility: visible;
   animation: sticky-pop-in 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes sticky-pop-in {
   from {
     opacity: 0;
-    transform: translateY(-50%) translateX(-6px);
+    transform: translateX(-6px);
   }
   to {
     opacity: 1;
-    transform: translateY(-50%) translateX(0);
+    transform: translateX(0);
   }
 }
 
