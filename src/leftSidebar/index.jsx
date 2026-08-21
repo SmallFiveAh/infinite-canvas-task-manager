@@ -1,10 +1,16 @@
+import { useState, useRef, useEffect, useCallback } from 'react'
+import StickyPalette, { DEFAULT_STICKY } from '../stickyPalette'
 import './index.css'
 
 /**
  * 左侧工具栏组件 - 无限画布任务管理器
  * 仿 Figma / Excalidraw 风格的垂直工具栏
+ *
+ * 便签按钮特殊交互：
+ *  - 按住并拖动：直接在拖放位置创建橙色默认便签
+ *  - 单击（无拖动）：弹出便签样式面板，选择自定义样式
  */
-function LeftSidebar({ activeTool, onToolChange, isToolLocked }) {
+function LeftSidebar({ activeTool, onToolChange, isToolLocked, createStickyNote, screenToCanvas }) {
   const tools = [
     { id: 'palette', icon: 'bi-circle-square', label: '形状与流程图' },
     { id: 'text', icon: 'bi-type', label: '文字', framed: true },
@@ -17,8 +23,117 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked }) {
     { id: 'card', icon: 'bi-card-text', label: '卡片', custom: 'card-icon' },
   ]
 
+  // 便签面板显隐
+  const [stickyPaletteVisible, setStickyPaletteVisible] = useState(false)
+  // 便签按钮 DOM 引用（用于定位面板）
+  const stickyBtnRef = useRef(null)
+
+  // 便签拖放状态
+  const dragStateRef = useRef({
+    isDragging: false,
+    startX: 0,
+    startY: 0,
+    moved: false,
+  })
+  const DRAG_THRESHOLD = 5 // 像素阈值，超过视为拖放而非点击
+
   const handleToolClick = (toolId) => {
     onToolChange?.(toolId)
+  }
+
+  /** ====== 便签按钮：区分鼠标按下拖放 vs 单击 ====== */
+  const handleStickyMouseDown = useCallback((e) => {
+    if (e.button !== 0) return
+    const state = dragStateRef.current
+    state.isDragging = true
+    state.moved = false
+    state.startX = e.clientX
+    state.startY = e.clientY
+  }, [])
+
+  const handleStickyMouseMove = useCallback((e) => {
+    const state = dragStateRef.current
+    if (!state.isDragging) return
+    const dx = e.clientX - state.startX
+    const dy = e.clientY - state.startY
+    if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+      state.moved = true
+    }
+  }, [])
+
+  const handleStickyMouseUp = useCallback((e) => {
+    const state = dragStateRef.current
+    if (!state.isDragging) return
+    const wasMoved = state.moved
+    state.isDragging = false
+    state.moved = false
+
+    if (wasMoved) {
+      // 拖放：在鼠标位置创建默认橙色便签
+      const canvasPos = screenToCanvas?.(e.clientX, e.clientY)
+      createStickyNote?.(DEFAULT_STICKY, canvasPos)
+      onToolChange?.('sticky')
+    } else {
+      // 单击：弹出便签样式面板
+      setStickyPaletteVisible(true)
+      onToolChange?.('sticky')
+    }
+  }, [createStickyNote, screenToCanvas, onToolChange])
+
+  // 全局监听鼠标移动/抬起，支持拖出按钮范围也能识别
+  useEffect(() => {
+    const onMove = (e) => handleStickyMouseMove(e)
+    const onUp = (e) => handleStickyMouseUp(e)
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+    return () => {
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+  }, [handleStickyMouseMove, handleStickyMouseUp])
+
+  // 便签面板：外部点击 / Esc 关闭
+  const paletteWrapRef = useRef(null)
+  useEffect(() => {
+    if (!stickyPaletteVisible) return
+    const handleClickOutside = (e) => {
+      const wrap = paletteWrapRef.current
+      const btn = stickyBtnRef.current
+      if (wrap && !wrap.contains(e.target) && btn && !btn.contains(e.target)) {
+        setStickyPaletteVisible(false)
+      }
+    }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setStickyPaletteVisible(false)
+    }
+    // 使用 setTimeout 避免本次点击立即触发关闭
+    const t = setTimeout(() => {
+      window.addEventListener('mousedown', handleClickOutside)
+    }, 0)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('mousedown', handleClickOutside)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [stickyPaletteVisible])
+
+  /**
+   * 便签样式面板选择回调
+   */
+  const handleStickyPaletteSelect = (preset) => {
+    // 在画布中央（或偏移一点的位置）创建
+    const container = document.querySelector('.infinite-canvas-container')
+    if (container) {
+      const rect = container.getBoundingClientRect()
+      const centerX = rect.left + rect.width / 2
+      const centerY = rect.top + rect.height / 2
+      const canvasPos = screenToCanvas?.(centerX, centerY)
+      createStickyNote?.(preset, canvasPos)
+    } else {
+      createStickyNote?.(preset)
+    }
+    setStickyPaletteVisible(false)
   }
 
   return (
@@ -28,12 +143,23 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked }) {
           {tools.map((tool, index) => {
             const isActive = activeTool === tool.id
             const showLock = isToolLocked && isActive
+            const isSticky = tool.id === 'sticky'
+
+            const btnProps = isSticky
+              ? {
+                  ref: stickyBtnRef,
+                  onMouseDown: handleStickyMouseDown,
+                }
+              : {
+                  onClick: () => handleToolClick(tool.id),
+                }
+
             return (
               <button
                 key={tool.id}
-                className={`sidebar-tool-btn ${isActive ? 'active' : ''} ${tool.topGradient ? 'has-top-gradient' : ''} ${tool.stickyNote ? 'is-sticky' : ''} ${tool.custom || ''} ${showLock ? 'is-locked' : ''}`}
-                onClick={() => handleToolClick(tool.id)}
-                title={`${tool.label}${showLock ? '（已锁定）' : ''}`}
+                {...btnProps}
+                className={`sidebar-tool-btn ${isActive ? 'active' : ''} ${tool.topGradient ? 'has-top-gradient' : ''} ${tool.stickyNote ? 'is-sticky' : ''} ${tool.custom || ''} ${showLock ? 'is-locked' : ''} ${isSticky ? 'sticky-tool-btn' : ''}`}
+                title={`${tool.label}${showLock ? '（已锁定）' : ''}${isSticky ? ' · 拖放快速创建，单击选样式' : ''}`}
                 aria-label={tool.label}
                 data-index={index}
               >
@@ -64,7 +190,56 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked }) {
           </button>
         </div>
       </div>
+
+      {/* 便签样式面板 - 定位在便签按钮右侧 */}
+      {stickyPaletteVisible && (
+        <StickyPalettePopover
+          anchorRef={stickyBtnRef}
+          wrapRef={paletteWrapRef}
+          onSelect={handleStickyPaletteSelect}
+        />
+      )}
     </aside>
+  )
+}
+
+/**
+ * 便签面板 Popover - 定位在便签按钮右侧
+ */
+function StickyPalettePopover({ anchorRef, wrapRef, onSelect }) {
+  const [pos, setPos] = useState({ left: 0, top: 0 })
+
+  useEffect(() => {
+    const updatePos = () => {
+      const el = anchorRef?.current
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      // 定位在按钮右侧，垂直居中对齐（面板左上角约在按钮中间高度）
+      setPos({
+        left: rect.right + 12,
+        top: rect.top + rect.height / 2,
+      })
+    }
+    updatePos()
+    window.addEventListener('resize', updatePos)
+    window.addEventListener('scroll', updatePos, true)
+    return () => {
+      window.removeEventListener('resize', updatePos)
+      window.removeEventListener('scroll', updatePos, true)
+    }
+  }, [anchorRef])
+
+  return (
+    <div
+      ref={wrapRef}
+      className="sticky-palette-popover-wrap"
+      style={{
+        left: pos.left,
+        top: pos.top,
+      }}
+    >
+      <StickyPalette onSelect={onSelect} />
+    </div>
   )
 }
 
