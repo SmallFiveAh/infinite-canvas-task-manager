@@ -21,6 +21,8 @@ function InfiniteCanvas({
   onContainerReady,
   elements = [],
   onUpdateElement,
+  selectedIds = [],
+  onSelectionChange,
 }) {
   const containerRef = useRef(null)
   const canvasRef = useRef(null)
@@ -64,6 +66,9 @@ function InfiniteCanvas({
   const scaleRef = useRef(1)
   const offsetRef = useRef({ x: 0, y: 0 })
   const isMarqueeRef = useRef(false)
+  const marqueeStartShiftRef = useRef(false)
+  const marqueeRef = useRef(null)
+  const selectedIdsRef = useRef([])
 
   // 元素拖拽状态
   const elementDragRef = useRef({
@@ -82,6 +87,7 @@ function InfiniteCanvas({
   // 同步 ref，供事件回调使用最新值
   useEffect(() => { scaleRef.current = scale }, [scale])
   useEffect(() => { offsetRef.current = offset }, [offset])
+  useEffect(() => { selectedIdsRef.current = selectedIds }, [selectedIds])
 
   // viewMode：'hand' 允许左键拖拽平移；'select' 禁用左键平移（留给选择交互）
   const viewModeRef = useRef(viewMode)
@@ -232,6 +238,25 @@ function InfiniteCanvas({
     return null
   }, [elements])
 
+  /**
+   * 获取框选矩形（画布坐标系）内的所有元素 ID
+   */
+  const getElementsInMarquee = useCallback((marqueeRect) => {
+    if (!marqueeRect) return []
+    const { left, top, right, bottom } = marqueeRect
+    const ids = []
+    for (const el of elements) {
+      if (el.type !== 'sticky') continue
+      // 矩形相交检测
+      const elRight = el.x + el.width
+      const elBottom = el.y + el.height
+      if (el.x <= right && elRight >= left && el.y <= bottom && elBottom >= top) {
+        ids.push(el.id)
+      }
+    }
+    return ids
+  }, [elements])
+
   /** ===== 交互：鼠标按下 =====
    *  优先检测是否点中便签元素 → 拖拽元素
    *  否则：hand 模式平移画布 / select 模式框选
@@ -244,10 +269,26 @@ function InfiniteCanvas({
     const localX = e.clientX - rect.left
     const localY = e.clientY - rect.top
     const { x: canvasX, y: canvasY } = localToCanvas(localX, localY)
+    const isShift = e.shiftKey
 
     // 检测是否点中便签
     const hit = hitTestElement(canvasX, canvasY)
     if (hit) {
+      // select 模式下：点击元素更新选中状态
+      if (viewModeRef.current === 'select') {
+        const curSelected = selectedIdsRef.current
+        if (isShift) {
+          // Shift + 点击：切换单个元素选中（追加/取消）
+          const isAlreadySelected = curSelected.includes(hit.id)
+          const next = isAlreadySelected
+            ? curSelected.filter((id) => id !== hit.id)
+            : [...curSelected, hit.id]
+          onSelectionChange?.(next)
+        } else if (!curSelected.includes(hit.id)) {
+          // 普通点击未选中的元素：单选该元素
+          onSelectionChange?.([hit.id])
+        }
+      }
       elementDragRef.current = {
         isDragging: true,
         elementId: hit.id,
@@ -258,6 +299,7 @@ function InfiniteCanvas({
       return
     }
 
+    // 未点中任何元素
     if (viewModeRef.current === 'hand') {
       isDraggingRef.current = true
       dragStartRef.current = {
@@ -269,8 +311,12 @@ function InfiniteCanvas({
       container.style.cursor = 'grabbing'
     } else {
       // select 模式：启动框选
+      // 非 Shift 状态下：空点击清空选中（在鼠标抬起时判断无移动再清空）
+      marqueeStartShiftRef.current = isShift
       isMarqueeRef.current = true
-      setMarquee({ startX: localX, startY: localY, curX: localX, curY: localY })
+      const mq = { startX: localX, startY: localY, curX: localX, curY: localY }
+      marqueeRef.current = mq
+      setMarquee(mq)
     }
   }
 
@@ -292,13 +338,15 @@ function InfiniteCanvas({
       return
     }
 
-    if (isMarqueeRef.current) {
+    if (isMarqueeRef.current && marqueeRef.current) {
       const rect = container.getBoundingClientRect()
-      setMarquee((prev) => prev ? {
-        ...prev,
+      const next = {
+        ...marqueeRef.current,
         curX: e.clientX - rect.left,
         curY: e.clientY - rect.top,
-      } : prev)
+      }
+      marqueeRef.current = next
+      setMarquee(next)
       return
     }
 
@@ -329,9 +377,47 @@ function InfiniteCanvas({
     }
 
     if (isMarqueeRef.current) {
+      const marqueeSnapshot = marqueeRef.current
       isMarqueeRef.current = false
-      // 空画布上无元素可选，释放即清除框（符合 Figma/Excalidraw 行为）
+      marqueeRef.current = null
       setMarquee(null)
+
+      // 计算框选覆盖的元素
+      if (marqueeSnapshot && viewModeRef.current === 'select') {
+        const { startX, startY, curX, curY } = marqueeSnapshot
+        const width = Math.abs(curX - startX)
+        const height = Math.abs(curY - startY)
+        const isPureClick = width < 3 && height < 3
+
+        if (isPureClick) {
+          // 纯点击空白处：非 Shift 清空选中
+          if (!marqueeStartShiftRef.current) {
+            onSelectionChange?.([])
+          }
+        } else {
+          // 框选：转换为画布坐标系矩形
+          const leftLocal = Math.min(startX, curX)
+          const topLocal = Math.min(startY, curY)
+          const rightLocal = Math.max(startX, curX)
+          const bottomLocal = Math.max(startY, curY)
+          const { x: cx1, y: cy1 } = localToCanvas(leftLocal, topLocal)
+          const { x: cx2, y: cy2 } = localToCanvas(rightLocal, bottomLocal)
+          const marqueeRect = {
+            left: Math.min(cx1, cx2),
+            top: Math.min(cy1, cy2),
+            right: Math.max(cx1, cx2),
+            bottom: Math.max(cy1, cy2),
+          }
+          const hitIds = getElementsInMarquee(marqueeRect)
+          if (marqueeStartShiftRef.current) {
+            // Shift + 框选：并集（去重追加）
+            const set = new Set([...selectedIdsRef.current, ...hitIds])
+            onSelectionChange?.(Array.from(set))
+          } else {
+            onSelectionChange?.(hitIds)
+          }
+        }
+      }
       return
     }
     isDraggingRef.current = false
@@ -396,6 +482,21 @@ function InfiniteCanvas({
     }
   }, [contextMenu.visible, closeContextMenu])
 
+  // Esc 清空选中（输入框中不触发）
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key !== 'Escape') return
+      const target = e.target
+      if (target && (target.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return
+      if (selectedIdsRef.current.length > 0) {
+        onSelectionChange?.([])
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onSelectionChange])
+
   return (
     <div
       ref={setContainerRef}
@@ -418,6 +519,7 @@ function InfiniteCanvas({
       }}>
         {elements.map((el) => {
           if (el.type === 'sticky') {
+            const isSelected = selectedIds.includes(el.id)
             const style = {
               position: 'absolute',
               left: el.x * scale + offset.x,
@@ -425,10 +527,14 @@ function InfiniteCanvas({
               width: el.width * scale,
               height: el.height * scale,
               background: el.bg,
-              border: `1.5px solid ${el.border}`,
+              border: isSelected
+                ? `2.5px solid var(--accent-purple, #aa3bff)`
+                : `1.5px solid ${el.border}`,
               borderRadius: el.shape === 'irregular' ? '8px 14px 10px 12px' : '10px',
               transform: el.shape === 'irregular' ? 'rotate(-0.5deg)' : 'none',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+              boxShadow: isSelected
+                ? '0 0 0 3px rgba(170, 59, 255, 0.18), 0 6px 16px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06)'
+                : '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
               pointerEvents: 'auto',
               cursor: 'grab',
               padding: `${8 * scale}px ${12 * scale}px`,
@@ -438,30 +544,56 @@ function InfiniteCanvas({
               alignItems: 'center',
               justifyContent: 'center',
               userSelect: 'none',
-              transition: 'box-shadow 0.15s ease',
+              transition: 'box-shadow 0.15s ease, border-color 0.15s ease, border-width 0.15s ease',
+              outline: 'none',
             }
             return (
               <div
                 key={el.id}
-                className="canvas-sticky-note"
+                className={`canvas-sticky-note ${isSelected ? 'is-selected' : ''}`}
                 style={style}
+                data-selected={isSelected ? 'true' : 'false'}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06)'
+                  if (!isSelected) {
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06)'
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
+                  if (!isSelected) {
+                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
+                  }
                 }}
               >
-                <div className="sticky-corner-fold" style={{
-                  position: 'absolute',
-                  top: 0,
-                  right: 0,
-                  width: `${14 * scale}px`,
-                  height: `${14 * scale}px`,
-                  background: `linear-gradient(135deg, transparent 50%, ${el.border} 50%, ${el.border} 100%)`,
-                  borderRadius: `0 ${el.shape === 'irregular' ? '12px' : '8px'} 0 0`,
-                  opacity: 0.6,
-                }} />
+                {/* 选中手柄：四角小圆点 */}
+                {isSelected && (
+                  <>
+                    {[
+                      { pos: 'top-left', left: -4, top: -4 },
+                      { pos: 'top-right', right: -4, top: -4 },
+                      { pos: 'bottom-left', left: -4, bottom: -4 },
+                      { pos: 'bottom-right', right: -4, bottom: -4 },
+                    ].map((handle) => (
+                      <span
+                        key={handle.pos}
+                        className={`sticky-select-handle handle-${handle.pos}`}
+                        style={{
+                          position: 'absolute',
+                          width: 8,
+                          height: 8,
+                          background: '#ffffff',
+                          border: '2px solid var(--accent-purple, #aa3bff)',
+                          borderRadius: '50%',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                          left: handle.left !== undefined ? handle.left : undefined,
+                          right: handle.right !== undefined ? handle.right : undefined,
+                          top: handle.top !== undefined ? handle.top : undefined,
+                          bottom: handle.bottom !== undefined ? handle.bottom : undefined,
+                          zIndex: 3,
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
               </div>
             )
           }

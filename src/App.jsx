@@ -12,6 +12,7 @@ function App() {
   const [viewMode, setViewMode] = useState('select')
   const [isToolLocked, setIsToolLocked] = useState(false)
   const [elements, setElements] = useState([])
+  const [selectedIds, setSelectedIds] = useState([])
 
   // Toolbar 需要获取画布容器尺寸，用于以视口中心为锚计算缩放后的 offset
   const canvasContainerRef = useRef(null)
@@ -114,6 +115,8 @@ function App() {
         onContainerReady={(el) => { canvasContainerRef.current = el }}
         elements={elements}
         onUpdateElement={updateElementPosition}
+        selectedIds={selectedIds}
+        onSelectionChange={setSelectedIds}
       />
     </div>
   )
