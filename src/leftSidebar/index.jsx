@@ -8,7 +8,7 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked }) {
   const tools = [
     { id: 'palette', icon: 'bi-circle-square', label: '形状与流程图' },
     { id: 'text', icon: 'bi-type', label: '文字', framed: true },
-        { id: 'freedraw', icon: 'bi-suit-club-fill', label: '手绘', custom: 'freedraw-curve' },
+    { id: 'freedraw', icon: 'bi-suit-club-fill', label: '手绘', custom: 'freedraw-curve' },
     { id: 'mindmap', icon: 'bi-diagram-3', label: '思维导图' },
     { id: 'sticky', icon: 'bi-sticky-fill', label: '便利贴', stickyNote: true },
     { id: 'table', icon: 'bi-grid-3x3-gap-fill', label: '表格', custom: 'table-icon' },

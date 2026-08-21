@@ -2,7 +2,7 @@
 .left-sidebar {
   position: fixed;
   top: 50%;
-  left: 20px;
+  left: 16px;
   transform: translateY(-50%);
   z-index: 100;
   pointer-events: none;
@@ -16,7 +16,7 @@
   padding: 12px 8px;
   background: var(--ui-surface);
   border: 1px solid var(--ui-border);
-  border-radius: 20px;
+  border-radius: 15px;
   box-shadow: var(--shadow-lg),
               0 0 0 1px rgba(0, 0, 0, 0.02) inset;
   pointer-events: auto;
