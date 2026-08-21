@@ -15,6 +15,7 @@ import './index.css'
 function InfiniteCanvas({
   scale: scaleProp,
   offset: offsetProp,
+  viewMode = 'hand',
   onTransformChange,
   onContainerReady,
 }) {
@@ -50,11 +51,16 @@ function InfiniteCanvas({
   // 右键菜单状态
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 })
 
+  // 框选状态：select 模式下左键拖拽产生矩形框
+  // marquee = { startX, startY, curX, curY }（容器局部坐标），null 表示无框选
+  const [marquee, setMarquee] = useState(null)
+
   // 交互状态（使用 ref 避免频繁 re-render）
   const isDraggingRef = useRef(false)
   const dragStartRef = useRef({ screenX: 0, screenY: 0, offsetX: 0, offsetY: 0 })
   const scaleRef = useRef(1)
   const offsetRef = useRef({ x: 0, y: 0 })
+  const isMarqueeRef = useRef(false)
 
   // 点阵网格参数
   const BASE_GRID = 20
@@ -65,6 +71,15 @@ function InfiniteCanvas({
   // 同步 ref，供事件回调使用最新值
   useEffect(() => { scaleRef.current = scale }, [scale])
   useEffect(() => { offsetRef.current = offset }, [offset])
+
+  // viewMode：'hand' 允许左键拖拽平移；'select' 禁用左键平移（留给选择交互）
+  const viewModeRef = useRef(viewMode)
+  useEffect(() => {
+    viewModeRef.current = viewMode
+    const el = containerRef.current
+    if (!el) return
+    el.style.cursor = viewMode === 'hand' ? 'grab' : 'default'
+  }, [viewMode])
 
   /**
    * 推导网格渲染参数
@@ -176,23 +191,49 @@ function InfiniteCanvas({
   // scale / offset 变化时重绘
   useEffect(() => { drawGrid() }, [scale, offset, drawGrid])
 
-  /** ===== 交互：鼠标按下开始拖拽 ===== */
+  /** ===== 交互：鼠标按下 =====
+   *  - hand 模式：左键拖拽平移画布
+   *  - select 模式：左键拖拽产生框选矩形
+   */
   const handleMouseDown = (e) => {
     if (e.button !== 0) return
-    isDraggingRef.current = true
-    dragStartRef.current = {
-      screenX: e.clientX,
-      screenY: e.clientY,
-      offsetX: offsetRef.current.x,
-      offsetY: offsetRef.current.y,
-    }
-    if (containerRef.current) {
-      containerRef.current.style.cursor = 'grabbing'
+    const container = containerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    const localX = e.clientX - rect.left
+    const localY = e.clientY - rect.top
+
+    if (viewModeRef.current === 'hand') {
+      isDraggingRef.current = true
+      dragStartRef.current = {
+        screenX: e.clientX,
+        screenY: e.clientY,
+        offsetX: offsetRef.current.x,
+        offsetY: offsetRef.current.y,
+      }
+      container.style.cursor = 'grabbing'
+    } else {
+      // select 模式：启动框选
+      isMarqueeRef.current = true
+      setMarquee({ startX: localX, startY: localY, curX: localX, curY: localY })
     }
   }
 
-  /** ===== 交互：鼠标移动（拖拽中更新 offset） ===== */
+  /** ===== 交互：鼠标移动 ===== */
   const handleMouseMove = (e) => {
+    const container = containerRef.current
+    if (!container) return
+
+    if (isMarqueeRef.current) {
+      const rect = container.getBoundingClientRect()
+      setMarquee((prev) => prev ? {
+        ...prev,
+        curX: e.clientX - rect.left,
+        curY: e.clientY - rect.top,
+      } : prev)
+      return
+    }
+
     if (!isDraggingRef.current) return
     const dx = e.clientX - dragStartRef.current.screenX
     const dy = e.clientY - dragStartRef.current.screenY
@@ -204,11 +245,17 @@ function InfiniteCanvas({
     updateTransform(scaleRef.current, newOffset)
   }
 
-  /** ===== 交互：鼠标抬起 / 离开画布，结束拖拽 ===== */
+  /** ===== 交互：鼠标抬起 / 离开画布，结束拖拽或框选 ===== */
   const endDrag = () => {
+    if (isMarqueeRef.current) {
+      isMarqueeRef.current = false
+      // 空画布上无元素可选，释放即清除框（符合 Figma/Excalidraw 行为）
+      setMarquee(null)
+      return
+    }
     isDraggingRef.current = false
     if (containerRef.current) {
-      containerRef.current.style.cursor = 'grab'
+      containerRef.current.style.cursor = viewModeRef.current === 'hand' ? 'grab' : 'default'
     }
   }
 
@@ -280,6 +327,21 @@ function InfiniteCanvas({
       onContextMenu={handleContextMenu}
     >
       <canvas ref={canvasRef} className="infinite-canvas-canvas" />
+      {marquee && (() => {
+        const left = Math.min(marquee.startX, marquee.curX)
+        const top = Math.min(marquee.startY, marquee.curY)
+        const width = Math.abs(marquee.curX - marquee.startX)
+        const height = Math.abs(marquee.curY - marquee.startY)
+        // 拖拽距离过小（纯点击）时不显示框，避免闪烁
+        if (width < 2 && height < 2) return null
+        return (
+          <div
+            className="marquee-selection"
+            style={{ left, top, width, height }}
+            aria-hidden="true"
+          />
+        )
+      })()}
       <div className="infinite-canvas-hud" onClick={handleResetZoom} role="button" tabIndex={0} title="点击恢复到 100%">
         <i className="hud-icon bi bi-arrows-fullscreen" aria-hidden="true" />
         <span className="hud-text">{(scale * 100).toFixed(0)}%</span>

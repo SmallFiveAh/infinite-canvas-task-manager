@@ -3,7 +3,7 @@ import './index.css'
 
 const VIEW_MODES = [
   { id: 'select', icon: 'bi-cursor', label: '选择 (V)' },
-  { id: 'hand', icon: 'bi-hand-index-thumb', label: '手型 (H)' },
+  { id: 'hand', icon: 'bi-hand-index-thumb', label: '移动 (H)' },
 ]
 
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.5, 2, 3, 4]
@@ -92,6 +92,28 @@ function Toolbar({ scale = 1, offset = { x: 0, y: 0 }, canvasContainerRef, onTra
     }
   }, [zoomMenuOpen])
 
+  // 视图模式快捷键：V = 选择，H = 移动
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // 在输入框 / 可编辑区域中不触发
+      const target = e.target
+      if (target && (target.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return
+      if (e.metaKey || e.ctrlKey || e.altKey) return
+      const key = e.key.toLowerCase()
+      if (key === 'v') {
+        onViewModeChange?.('select')
+      } else if (key === 'h') {
+        onViewModeChange?.('hand')
+      } else {
+        return
+      }
+      e.preventDefault()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onViewModeChange])
+
   return (
     <header className="toolbar" role="toolbar" aria-label="顶部工具栏">
       <div className="toolbar-inner">
@@ -122,22 +144,6 @@ function Toolbar({ scale = 1, offset = { x: 0, y: 0 }, canvasContainerRef, onTra
           ))}
         </div>
 
-        {/* 中间：当前工具 + 文件标题 */}
-        <div className="toolbar-group toolbar-group-center">
-          <span className="current-tool-indicator" aria-label={`当前工具: ${activeTool}`}>
-            <i className="bi bi-wrench-adjustable-circle" aria-hidden="true" />
-            <span className="current-tool-name">{activeTool}</span>
-          </span>
-          <div className="doc-title" title="未命名画布">
-            <span className="doc-title-text">未命名画布</span>
-            <i className="bi bi-pencil-square doc-edit-icon" aria-hidden="true" />
-          </div>
-          <span className="saved-indicator" aria-label="已保存">
-            <i className="bi bi-check2-circle-fill" aria-hidden="true" />
-            <span>已保存</span>
-          </span>
-        </div>
-
         {/* 右侧：缩放 + 操作 */}
         <div className="toolbar-group toolbar-group-right">
           <div className="zoom-control">
@@ -163,15 +169,6 @@ function Toolbar({ scale = 1, offset = { x: 0, y: 0 }, canvasContainerRef, onTra
               </button>
               {zoomMenuOpen && (
                 <div className="zoom-menu" role="listbox">
-                  <button
-                    className="zoom-menu-item"
-                    onClick={handleZoomReset}
-                    role="option"
-                  >
-                    <i className="bi bi-house-door" aria-hidden="true" />
-                    <span>实际大小</span>
-                  </button>
-                  <div className="zoom-menu-separator" aria-hidden="true" />
                   {ZOOM_STEPS.map((step) => {
                     const active = Math.abs(scale - step) < 0.01
                     return (
@@ -186,15 +183,6 @@ function Toolbar({ scale = 1, offset = { x: 0, y: 0 }, canvasContainerRef, onTra
                       </button>
                     )
                   })}
-                  <div className="zoom-menu-separator" aria-hidden="true" />
-                  <button
-                    className="zoom-menu-item"
-                    onClick={() => setZoomMenuOpen(false)}
-                    role="option"
-                  >
-                    <i className="bi bi-arrows-fullscreen" aria-hidden="true" />
-                    <span>适应窗口</span>
-                  </button>
                 </div>
               )}
             </div>
@@ -226,16 +214,6 @@ function Toolbar({ scale = 1, offset = { x: 0, y: 0 }, canvasContainerRef, onTra
             <i className="bi bi-arrow-clockwise" aria-hidden="true" />
           </button>
 
-          <div className="toolbar-divider" aria-hidden="true" />
-
-          <button
-            className="toolbar-btn share-btn"
-            title="分享"
-            aria-label="分享"
-          >
-            <i className="bi bi-send-fill" aria-hidden="true" />
-            <span>分享</span>
-          </button>
         </div>
       </div>
     </header>

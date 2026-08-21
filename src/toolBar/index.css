@@ -113,27 +113,17 @@
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 锁定激活态：与 .mode-btn.active 保持一致的紫色渐变高亮 */
 .lock-btn.active {
   background: linear-gradient(135deg,
-    rgba(251, 191, 36, 0.15) 0%,
-    rgba(248, 113, 113, 0.15) 100%);
-  color: #d97706;
-  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.3) inset;
-}
-
-.lock-btn.active i {
-  color: #d97706;
+    rgba(170, 59, 255, 0.12) 0%,
+    rgba(96, 165, 250, 0.12) 100%);
+  color: var(--ink-primary);
+  box-shadow: 0 0 0 1px rgba(170, 59, 255, 0.2) inset;
 }
 
 .lock-btn:hover {
   background: var(--bg-canvas-warm);
-}
-
-.lock-btn.active:hover {
-  background: linear-gradient(135deg,
-    rgba(251, 191, 36, 0.22) 0%,
-    rgba(248, 113, 113, 0.22) 100%);
-  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.4) inset;
 }
 
 /* ========== 视图模式按钮（激活态） ========== */

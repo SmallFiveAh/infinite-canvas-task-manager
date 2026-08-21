@@ -55,6 +55,7 @@ function App() {
       <InfiniteCanvas
         scale={scale}
         offset={offset}
+        viewMode={viewMode}
         onTransformChange={handleTransformChange}
         onContainerReady={(el) => { canvasContainerRef.current = el }}
       />

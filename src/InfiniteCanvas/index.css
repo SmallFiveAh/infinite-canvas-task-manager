@@ -31,6 +31,17 @@
   z-index: 1;
 }
 
+/* ========== 框选矩形（select 模式） ========== */
+.marquee-selection {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  border: 1.5px solid var(--accent-purple, #aa3bff);
+  background: rgba(170, 59, 255, 0.10);
+  border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+}
+
 .infinite-canvas-hud {
   position: absolute;
   right: 20px;
