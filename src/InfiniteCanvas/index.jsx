@@ -21,6 +21,7 @@ function InfiniteCanvas({
   onContainerReady,
   elements = [],
   onUpdateElement,
+  onResizeElement,
   selectedIds = [],
   onSelectionChange,
 }) {
@@ -77,6 +78,19 @@ function InfiniteCanvas({
     offsetX: 0, // 鼠标相对元素左上角的偏移（画布坐标系）
     offsetY: 0,
   })
+
+  // 便签缩放拖拽状态（四角手柄拖拽）
+  const resizeDragRef = useRef({
+    isResizing: false,
+    elementId: null,
+    handle: null, // 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+    startCanvasX: 0, // 鼠标按下时的画布坐标
+    startCanvasY: 0,
+    origEl: null, // 原始几何 { x, y, width, height }
+  })
+  // 便签缩放最小尺寸（画布坐标系，与 scale 无关）
+  const MIN_STICKY_W = 40
+  const MIN_STICKY_H = 40
 
   // 点阵网格参数
   const BASE_GRID = 20
@@ -219,6 +233,76 @@ function InfiniteCanvas({
   }, [])
 
   /**
+   * 根据手柄与鼠标位移计算便签新的几何属性
+   *  - 始终保持「对角点」不动
+   *  - 涉及左/上边移动的手柄，在 clamp 到最小尺寸时同步调整 x/y，
+   *    保证对角点依然贴在原位
+   *
+   * @param {string} handle - 四角手柄标识
+   * @param {object} orig - 原始几何 { x, y, width, height }
+   * @param {number} dx - 鼠标在画布坐标系下的水平位移
+   * @param {number} dy - 鼠标在画布坐标系下的垂直位移
+   * @param {number} minW / minH - 最小尺寸
+   * @returns {{x,y,width,height}} 新的几何
+   */
+  const computeResizePatch = useCallback((handle, orig, dx, dy, minW, minH) => {
+    let { x, y, width, height } = orig
+    switch (handle) {
+      case 'bottom-right': // 左上角不动
+        width = Math.max(minW, orig.width + dx)
+        height = Math.max(minH, orig.height + dy)
+        break
+      case 'bottom-left': // 右上角不动
+        width = Math.max(minW, orig.width - dx)
+        height = Math.max(minH, orig.height + dy)
+        x = orig.x + (orig.width - width)
+        break
+      case 'top-right': // 左下角不动
+        width = Math.max(minW, orig.width + dx)
+        height = Math.max(minH, orig.height - dy)
+        y = orig.y + (orig.height - height)
+        break
+      case 'top-left': // 右下角不动
+        width = Math.max(minW, orig.width - dx)
+        height = Math.max(minH, orig.height - dy)
+        x = orig.x + (orig.width - width)
+        y = orig.y + (orig.height - height)
+        break
+      default:
+        break
+    }
+    return { x, y, width, height }
+  }, [])
+
+  /**
+   * 便签四角手柄鼠标按下：启动缩放拖拽
+   *  - stopPropagation 阻止冒泡到容器，避免同时触发便签移动
+   *  - 记录起始画布坐标与原始几何，供 mousemove 计算
+   */
+  const handleResizeHandleMouseDown = useCallback((e, elementId, handle) => {
+    if (e.button !== 0) return
+    e.stopPropagation()
+    const el = elements.find((it) => it.id === elementId)
+    if (!el) return
+    const container = containerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    const localX = e.clientX - rect.left
+    const localY = e.clientY - rect.top
+    const { x: canvasX, y: canvasY } = localToCanvas(localX, localY)
+    resizeDragRef.current = {
+      isResizing: true,
+      elementId,
+      handle,
+      startCanvasX: canvasX,
+      startCanvasY: canvasY,
+      origEl: { x: el.x, y: el.y, width: el.width, height: el.height },
+    }
+    container.style.cursor =
+      handle === 'top-left' || handle === 'bottom-right' ? 'nwse-resize' : 'nesw-resize'
+  }, [elements, localToCanvas])
+
+  /**
    * 判断点击是否命中某个便签元素（返回元素 or null）
    */
   const hitTestElement = useCallback((canvasX, canvasY) => {
@@ -325,6 +409,20 @@ function InfiniteCanvas({
     const container = containerRef.current
     if (!container) return
 
+    // 便签缩放拖拽中（四角手柄）
+    if (resizeDragRef.current.isResizing) {
+      const rect = container.getBoundingClientRect()
+      const localX = e.clientX - rect.left
+      const localY = e.clientY - rect.top
+      const { x: canvasX, y: canvasY } = localToCanvas(localX, localY)
+      const { handle, startCanvasX, startCanvasY, origEl, elementId } = resizeDragRef.current
+      const dx = canvasX - startCanvasX
+      const dy = canvasY - startCanvasY
+      const patch = computeResizePatch(handle, origEl, dx, dy, MIN_STICKY_W, MIN_STICKY_H)
+      onResizeElement?.(elementId, patch)
+      return
+    }
+
     // 便签元素拖拽中
     if (elementDragRef.current.isDragging) {
       const rect = container.getBoundingClientRect()
@@ -363,6 +461,21 @@ function InfiniteCanvas({
 
   /** ===== 交互：鼠标抬起 / 离开画布，结束拖拽或框选 ===== */
   const endDrag = () => {
+    if (resizeDragRef.current.isResizing) {
+      resizeDragRef.current = {
+        isResizing: false,
+        elementId: null,
+        handle: null,
+        startCanvasX: 0,
+        startCanvasY: 0,
+        origEl: null,
+      }
+      if (containerRef.current) {
+        containerRef.current.style.cursor = viewModeRef.current === 'hand' ? 'grab' : 'default'
+      }
+      return
+    }
+
     if (elementDragRef.current.isDragging) {
       elementDragRef.current = {
         isDragging: false,
@@ -564,18 +677,19 @@ function InfiniteCanvas({
                   }
                 }}
               >
-                {/* 选中手柄：四角小圆点 */}
+                {/* 选中手柄：四角圆点，可拖拽缩放 */}
                 {isSelected && (
                   <>
                     {[
-                      { pos: 'top-left', left: -4, top: -4 },
-                      { pos: 'top-right', right: -4, top: -4 },
-                      { pos: 'bottom-left', left: -4, bottom: -4 },
-                      { pos: 'bottom-right', right: -4, bottom: -4 },
+                      { pos: 'top-left', left: -4, top: -4, cursor: 'nwse-resize' },
+                      { pos: 'top-right', right: -4, top: -4, cursor: 'nesw-resize' },
+                      { pos: 'bottom-left', left: -4, bottom: -4, cursor: 'nesw-resize' },
+                      { pos: 'bottom-right', right: -4, bottom: -4, cursor: 'nwse-resize' },
                     ].map((handle) => (
                       <span
                         key={handle.pos}
                         className={`sticky-select-handle handle-${handle.pos}`}
+                        onMouseDown={(e) => handleResizeHandleMouseDown(e, el.id, handle.pos)}
                         style={{
                           position: 'absolute',
                           width: 8,
@@ -588,7 +702,8 @@ function InfiniteCanvas({
                           right: handle.right !== undefined ? handle.right : undefined,
                           top: handle.top !== undefined ? handle.top : undefined,
                           bottom: handle.bottom !== undefined ? handle.bottom : undefined,
-                          zIndex: 3,
+                          zIndex: 4,
+                          cursor: handle.cursor,
                         }}
                       />
                     ))}

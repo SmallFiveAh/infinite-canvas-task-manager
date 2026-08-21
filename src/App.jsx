@@ -85,6 +85,17 @@ function App() {
     )
   }, [])
 
+  /**
+   * 更新元素尺寸（四角手柄拖拽缩放）
+   * @param {string} id - 元素 id
+   * @param {object} patch - { x, y, width, height } 新的几何属性
+   */
+  const resizeElement = useCallback((id, patch) => {
+    setElements((prev) =>
+      prev.map((el) => (el.id === id ? { ...el, ...patch } : el))
+    )
+  }, [])
+
   return (
     <div className="app-layout">
       <Toolbar
@@ -115,6 +126,7 @@ function App() {
         onContainerReady={(el) => { canvasContainerRef.current = el }}
         elements={elements}
         onUpdateElement={updateElementPosition}
+        onResizeElement={resizeElement}
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
       />
