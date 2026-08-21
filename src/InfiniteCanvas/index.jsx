@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import ContextMenu from '../contextMenu'
 import './index.css'
+import '../stickyPalette/index.css' // 引入异形便签样式
 
 /**
  * 无限画布组件 - Excalidraw 风格
@@ -653,58 +654,153 @@ function InfiniteCanvas({
         {elements.map((el) => {
           if (el.type === 'sticky') {
             const isSelected = selectedIds.includes(el.id)
-            const style = {
+            const isIrregular = el.shape === 'irregular' && el.subShape
+            const shapeClass = isIrregular ? `shape-${el.subShape}` : ''
+            const subShape = el.subShape
+
+            // Wrapper 类名：定位 + 选中态，不使用任何 clip-path / transform
+            const wrapperClass = [
+              'canvas-sticky-note',
+              isIrregular ? 'has-irregular' : 'is-rect',
+              isSelected ? 'is-selected' : '',
+            ].filter(Boolean).join(' ')
+
+            // Shape 内层类名：真正应用异形样式（clip-path / border-radius / transform）
+            const shapeInnerClass = [
+              'sticky-shape',
+              isIrregular ? `irregular-shape ${shapeClass}` : 'rect-shape',
+            ].filter(Boolean).join(' ')
+
+            // Wrapper 外层样式：只负责定位、大小、鼠标交互
+            const wrapperStyle = {
               position: 'absolute',
               left: el.x * scale + offset.x,
               top: el.y * scale + offset.y,
               width: el.width * scale,
               height: el.height * scale,
-              background: el.bg,
-              border: isSelected
-                ? `2.5px solid var(--accent-purple, #aa3bff)`
-                : `1.5px solid ${el.border}`,
-              borderRadius: el.shape === 'irregular' ? '8px 14px 10px 12px' : '10px',
-              transform: el.shape === 'irregular' ? 'rotate(-0.5deg)' : 'none',
-              boxShadow: isSelected
-                ? '0 0 0 3px rgba(170, 59, 255, 0.18), 0 6px 16px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06)'
-                : '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
               pointerEvents: 'auto',
               cursor: 'grab',
-              padding: `${8 * scale}px ${12 * scale}px`,
+              userSelect: 'none',
+              outline: 'none',
+              background: 'transparent', // 关键：wrapper 透明，不裁剪子元素
+              overflow: 'visible', // 关键：允许手柄显示在外部
               fontSize: `${15 * scale}px`,
-              color: 'var(--ink-primary)',
+              transition: 'filter 0.15s ease',
+            }
+
+            // Shape 内层样式：真正承载背景、形状
+            const shapeStyle = {
+              position: 'absolute',
+              inset: 0,
+              background: el.bg,
+              color: el.border,
+              // 矩形：标准 border + box-shadow
+              ...(isIrregular ? {} : {
+                border: isSelected
+                  ? `2.5px solid var(--accent-purple, #aa3bff)`
+                  : `1.5px solid ${el.border}`,
+                borderRadius: '10px',
+                padding: `${8 * scale}px ${12 * scale}px`,
+                boxShadow: isSelected
+                  ? '0 0 0 3px rgba(170, 59, 255, 0.18), 0 6px 16px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06)'
+                  : '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+              }),
+              // 异形：阴影通过 wrapper 的 filter 保证不被 clip-path 裁剪
+              ...(isIrregular ? {
+                boxShadow: isSelected
+                  ? 'inset 0 0 0 3px rgba(170, 59, 255, 0.22)'
+                  : 'inset 0 0 0 1.5px currentColor',
+              } : {}),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              userSelect: 'none',
-              transition: 'box-shadow 0.15s ease, border-color 0.15s ease, border-width 0.15s ease',
-              outline: 'none',
             }
+
+            // Wrapper 外层给异形加一个悬浮阴影（用 drop-shadow，不会被 clip-path 裁剪）
+            if (isIrregular) {
+              wrapperStyle.filter = isSelected
+                ? 'drop-shadow(0 6px 16px rgba(0,0,0,0.10)) drop-shadow(0 2px 4px rgba(0,0,0,0.06))'
+                : 'drop-shadow(0 2px 6px rgba(0,0,0,0.06)) drop-shadow(0 1px 2px rgba(0,0,0,0.04))'
+            }
+
             return (
               <div
                 key={el.id}
-                className={`canvas-sticky-note ${isSelected ? 'is-selected' : ''}`}
-                style={style}
+                className={wrapperClass}
+                style={wrapperStyle}
                 data-selected={isSelected ? 'true' : 'false'}
+                data-shape={el.shape}
+                data-sub-shape={subShape || ''}
                 onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06)'
+                  if (!isSelected && isIrregular) {
+                    e.currentTarget.style.filter =
+                      'drop-shadow(0 6px 16px rgba(0,0,0,0.10)) drop-shadow(0 2px 4px rgba(0,0,0,0.06))'
+                  } else if (!isSelected) {
+                    const shapeEl = e.currentTarget.querySelector('.sticky-shape')
+                    if (shapeEl) shapeEl.style.boxShadow = '0 6px 16px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06)'
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
+                  if (!isSelected && isIrregular) {
+                    e.currentTarget.style.filter =
+                      'drop-shadow(0 2px 6px rgba(0,0,0,0.06)) drop-shadow(0 1px 2px rgba(0,0,0,0.04))'
+                  } else if (!isSelected) {
+                    const shapeEl = e.currentTarget.querySelector('.sticky-shape')
+                    if (shapeEl) shapeEl.style.boxShadow = '0 2px 6px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)'
                   }
                 }}
               >
-                {/* 选中手柄：四角圆点，可拖拽缩放 */}
+                {/* ===== 内层：真正的异形形状 ===== */}
+                <div className={shapeInnerClass} style={shapeStyle}>
+                  {/* 异形：内容安全区（防止文字溢出异形边缘） */}
+                  {isIrregular ? (
+                    <div
+                      className="sticky-inner-content"
+                      style={{
+                        position: 'absolute',
+                        inset: subShape === 'heart' ? '22% 15% 12% 15%'
+                             : subShape === 'flower' ? '18%'
+                             : subShape === 'gear' ? '16%'
+                             : subShape === 'droplet' ? '18% 16% 16% 18%'
+                             : subShape === 'wave' ? '14% 10%'
+                             : '15%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--ink-primary)',
+                        // 水滴形：内层 rotate(-45deg)，这里抵消回来
+                        transform: subShape === 'droplet' ? 'rotate(45deg)' : 'none',
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      {/* 便签文字占位 */}
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* ===== 选中高亮外层光晕（异形：用一个稍微放大的副本放在后面作为发光边） ===== */}
+                {isSelected && isIrregular && (
+                  <div
+                    className={`sticky-glow-layer irregular-shape ${shapeClass}`}
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      inset: -3,
+                      background: 'rgba(170, 59, 255, 0.18)',
+                      zIndex: -1,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                )}
+
+                {/* ===== 四角手柄：放在 wrapper 外层，永远不被 clip-path 裁剪 ===== */}
                 {isSelected && (
                   <>
                     {[
-                      { pos: 'top-left', left: -4, top: -4, cursor: 'nwse-resize' },
-                      { pos: 'top-right', right: -4, top: -4, cursor: 'nesw-resize' },
-                      { pos: 'bottom-left', left: -4, bottom: -4, cursor: 'nesw-resize' },
-                      { pos: 'bottom-right', right: -4, bottom: -4, cursor: 'nwse-resize' },
+                      { pos: 'top-left', left: -5, top: -5, cursor: 'nwse-resize' },
+                      { pos: 'top-right', right: -5, top: -5, cursor: 'nesw-resize' },
+                      { pos: 'bottom-left', left: -5, bottom: -5, cursor: 'nesw-resize' },
+                      { pos: 'bottom-right', right: -5, bottom: -5, cursor: 'nwse-resize' },
                     ].map((handle) => (
                       <span
                         key={handle.pos}
@@ -712,17 +808,17 @@ function InfiniteCanvas({
                         onMouseDown={(e) => handleResizeHandleMouseDown(e, el.id, handle.pos)}
                         style={{
                           position: 'absolute',
-                          width: 8,
-                          height: 8,
+                          width: 10,
+                          height: 10,
                           background: '#ffffff',
                           border: '2px solid var(--accent-purple, #aa3bff)',
                           borderRadius: '50%',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.20), 0 0 0 2px rgba(255,255,255,0.60)',
                           left: handle.left !== undefined ? handle.left : undefined,
                           right: handle.right !== undefined ? handle.right : undefined,
                           top: handle.top !== undefined ? handle.top : undefined,
                           bottom: handle.bottom !== undefined ? handle.bottom : undefined,
-                          zIndex: 4,
+                          zIndex: 10, // 最高层，绝对不被任何东西挡住
                           cursor: handle.cursor,
                         }}
                       />

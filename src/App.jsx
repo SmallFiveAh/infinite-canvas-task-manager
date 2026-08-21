@@ -55,6 +55,7 @@ function App() {
       bg: preset.bg,
       border: preset.border,
       shape: preset.shape || 'rect',
+      subShape: preset.subShape || null,
       text: '',
     }
     setElements((prev) => [...prev, newSticky])

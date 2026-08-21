@@ -100,7 +100,7 @@
               0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
-/* ========== 分区：正方形 / 长方形 ========== */
+/* ========== 分区 ========== */
 .sticky-palette-section {
   margin-bottom: 14px;
 }
@@ -149,9 +149,69 @@
   border-radius: 7px;
 }
 
-.sticky-swatch.irregular {
-  border-radius: 6px 10px 7px 9px;
-  transform: rotate(-0.5deg);
+/* ========== 异形便签样例 ========== */
+.sticky-swatch.irregular-shape {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border: none;
+  box-shadow: inset 0 0 0 1.5px currentColor;
+}
+
+/* 水滴 */
+.sticky-swatch.shape-droplet {
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+}
+.sticky-swatch.shape-droplet:hover {
+  transform: rotate(-45deg) scale(1.06);
+}
+
+/* 波浪边 */
+.sticky-swatch.shape-wave {
+  border-radius: 0;
+  clip-path: polygon(
+    0% 15%, 8% 0%, 16% 15%, 24% 0%, 32% 15%, 40% 0%, 48% 15%, 56% 0%,
+    64% 15%, 72% 0%, 80% 15%, 88% 0%, 96% 15%, 100% 25%,
+    100% 85%, 92% 100%, 84% 85%, 76% 100%, 68% 85%, 60% 100%,
+    52% 85%, 44% 100%, 36% 85%, 28% 100%, 20% 85%, 12% 100%, 4% 85%,
+    0% 75%
+  );
+}
+
+/* 花朵（四叶草） */
+.sticky-swatch.shape-flower {
+  border-radius: 0;
+  clip-path: polygon(
+    50% 0%, 60% 15%, 75% 5%, 75% 20%, 95% 25%, 85% 40%,
+    100% 50%, 85% 60%, 95% 75%, 75% 80%, 75% 95%, 60% 85%,
+    50% 100%, 40% 85%, 25% 95%, 25% 80%, 5% 75%, 15% 60%,
+    0% 50%, 15% 40%, 5% 25%, 25% 20%, 25% 5%, 40% 15%
+  );
+}
+
+/* 圆形 */
+.sticky-swatch.shape-circle {
+  border-radius: 50%;
+}
+
+/* 心形 */
+.sticky-swatch.shape-heart {
+  border-radius: 0;
+  clip-path: polygon(
+    50% 15%, 20% 0%, 0% 25%, 0% 50%,
+    50% 100%, 100% 50%, 100% 25%, 80% 0%
+  );
+}
+
+/* 齿轮（星形锯齿） */
+.sticky-swatch.shape-gear {
+  border-radius: 0;
+  clip-path: polygon(
+    50% 0%, 58% 12%, 72% 8%, 75% 22%, 90% 28%, 88% 42%,
+    100% 50%, 88% 58%, 90% 72%, 75% 78%, 72% 92%, 58% 88%,
+    50% 100%, 42% 88%, 28% 92%, 25% 78%, 10% 72%, 12% 58%,
+    0% 50%, 12% 42%, 10% 28%, 25% 22%, 28% 8%, 42% 12%
+  );
 }
 
 .sticky-swatch:hover {
@@ -161,16 +221,19 @@
   z-index: 1;
 }
 
-.sticky-swatch.irregular:hover {
-  transform: rotate(-0.5deg) scale(1.06);
+.sticky-swatch.irregular-shape:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10),
+              0 1px 3px rgba(0, 0, 0, 0.06),
+              inset 0 0 0 1.5px currentColor;
+  z-index: 1;
 }
 
 .sticky-swatch:active {
   transform: scale(0.96);
 }
 
-.sticky-swatch.irregular:active {
-  transform: rotate(-0.5deg) scale(0.96);
+.sticky-swatch.shape-droplet:active {
+  transform: rotate(-45deg) scale(0.96);
 }
 
 /* ========== 便签工具按钮拖拽光标 ========== */
@@ -180,4 +243,123 @@
 
 .sticky-tool-btn:active {
   cursor: grabbing;
+}
+
+/* =========================================================
+   画布异形便签通用样式（供 InfiniteCanvas 使用）
+   =========================================================
+
+   结构：
+   .canvas-sticky-note (wrapper: 定位 + 手柄, 无 clip-path/transform)
+    └── .sticky-shape.irregular-shape.shape-xxx (内层: 真正的异形样式)
+    └── .sticky-glow-layer.irregular-shape.shape-xxx (选中外发光层)
+    └── .sticky-select-handle (四角手柄, 在 wrapper 外层)
+   ========================================================= */
+
+/* ===== wrapper 基础 ===== */
+.canvas-sticky-note {
+  /* 仅确保 wrapper 不产生意外裁剪 */
+  overflow: visible !important;
+  background: transparent !important;
+}
+
+
+/* ===== 内层 shape：异形样式应用在这里 ===== */
+.sticky-shape.irregular-shape {
+  border: none !important;
+  padding: 0 !important;
+  overflow: hidden; /* 防止背景溢出 clip-path 边缘（可选） */
+}
+
+/* ===== 选中光晕层：用同款异形放大 6px 放在后面 ===== */
+.sticky-glow-layer.irregular-shape {
+  /* 与 shape 层相同的异形形状 CSS */
+  border: none;
+}
+
+/* --------------------------------------------------------- */
+/* 水滴形：现在只应用到 shape 内层，不影响 wrapper 的手柄    */
+/* --------------------------------------------------------- */
+.sticky-shape.shape-droplet,
+.sticky-glow-layer.shape-droplet {
+  border-radius: 50% 50% 50% 0 !important;
+  transform: rotate(-45deg); /* 只有形状本身旋转，手柄不转 */
+}
+/* 水滴内层的内容，抵消 -45deg 旋转（wrapper内的inner-content已在JS中转回45deg，此处不需要额外设置） */
+
+/* --------------------------------------------------------- */
+/* 波浪边                                                       */
+/* --------------------------------------------------------- */
+.sticky-shape.shape-wave,
+.sticky-glow-layer.shape-wave {
+  border-radius: 0 !important;
+  clip-path: polygon(
+    0% 15%, 8% 0%, 16% 15%, 24% 0%, 32% 15%, 40% 0%, 48% 15%, 56% 0%,
+    64% 15%, 72% 0%, 80% 15%, 88% 0%, 96% 15%, 100% 25%,
+    100% 85%, 92% 100%, 84% 85%, 76% 100%, 68% 85%, 60% 100%,
+    52% 85%, 44% 100%, 36% 85%, 28% 100%, 20% 85%, 12% 100%, 4% 85%,
+    0% 75%
+  );
+}
+
+/* --------------------------------------------------------- */
+/* 花朵（四叶草）                                              */
+/* --------------------------------------------------------- */
+.sticky-shape.shape-flower,
+.sticky-glow-layer.shape-flower {
+  border-radius: 0 !important;
+  clip-path: polygon(
+    50% 0%, 60% 15%, 75% 5%, 75% 20%, 95% 25%, 85% 40%,
+    100% 50%, 85% 60%, 95% 75%, 75% 80%, 75% 95%, 60% 85%,
+    50% 100%, 40% 85%, 25% 95%, 25% 80%, 5% 75%, 15% 60%,
+    0% 50%, 15% 40%, 5% 25%, 25% 20%, 25% 5%, 40% 15%
+  );
+}
+
+/* --------------------------------------------------------- */
+/* 圆形                                                       */
+/* --------------------------------------------------------- */
+.sticky-shape.shape-circle,
+.sticky-glow-layer.shape-circle {
+  border-radius: 50% !important;
+}
+
+/* --------------------------------------------------------- */
+/* 心形                                                       */
+/* --------------------------------------------------------- */
+.sticky-shape.shape-heart,
+.sticky-glow-layer.shape-heart {
+  border-radius: 0 !important;
+  clip-path: polygon(
+    50% 15%, 20% 0%, 0% 25%, 0% 50%,
+    50% 100%, 100% 50%, 100% 25%, 80% 0%
+  );
+}
+
+/* --------------------------------------------------------- */
+/* 齿轮（星形锯齿）                                            */
+/* --------------------------------------------------------- */
+.sticky-shape.shape-gear,
+.sticky-glow-layer.shape-gear {
+  border-radius: 0 !important;
+  clip-path: polygon(
+    50% 0%, 58% 12%, 72% 8%, 75% 22%, 90% 28%, 88% 42%,
+    100% 50%, 88% 58%, 90% 72%, 75% 78%, 72% 92%, 58% 88%,
+    50% 100%, 42% 88%, 28% 92%, 25% 78%, 10% 72%, 12% 58%,
+    0% 50%, 12% 42%, 10% 28%, 25% 22%, 28% 8%, 42% 12%
+  );
+}
+
+/* ===== 异形便签内层内容安全区（备用） ===== */
+.canvas-sticky-note .sticky-inner-content {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* ===== 手柄层级再次加强，确保最上层 ===== */
+.sticky-select-handle {
+  isolation: isolate;
 }
