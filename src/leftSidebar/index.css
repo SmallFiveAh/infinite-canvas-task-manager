@@ -229,36 +229,20 @@
   height: 44px;
 }
 
-.more-dots {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-}
-
-.more-dots span {
-  width: 4px;
-  height: 4px;
-  background: var(--ink-muted);
-  border-radius: 50%;
-  transition: background 0.18s ease,
+.more-btn i {
+  font-size: 20px;
+  color: var(--ink-muted);
+  transition: color 0.18s ease,
               transform 0.18s ease;
 }
 
-.more-btn:hover .more-dots span {
-  background: var(--ink-primary);
+.more-btn:hover i {
+  color: var(--ink-primary);
+  transform: scale(1.08);
 }
 
-.more-btn:hover .more-dots span:nth-child(1) {
-  transform: translateY(-1px);
-}
-
-.more-btn:hover .more-dots span:nth-child(3) {
-  transform: translateY(1px);
-}
-
-.more-btn:active .more-dots span {
-  transform: scale(0.85);
+.more-btn:active i {
+  transform: scale(0.92);
 }
 
 /* ========== 响应式：小屏幕调整 ========== */

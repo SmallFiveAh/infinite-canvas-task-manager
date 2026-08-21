@@ -79,8 +79,10 @@
   cursor: pointer;
   color: var(--ink-secondary);
   font-family: var(--font-hand);
-  font-size: 14px;
-  line-height: 1;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
 }
@@ -144,7 +146,10 @@
   background: var(--bg-canvas-warm);
   border-radius: 6px;
   color: var(--ink-secondary);
-  font-size: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
   transition: background-color 0.18s ease;
 }
 
@@ -154,7 +159,8 @@
 }
 
 .current-tool-name {
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.01em;
   text-transform: lowercase;
 }
 
@@ -167,7 +173,7 @@
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.18s ease;
-  color: var(--ink-primary);
+  color: var(--ink-secondary);
 }
 
 .doc-title:hover {
@@ -177,6 +183,8 @@
 .doc-title-text {
   font-size: 15px;
   font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -185,7 +193,7 @@
 
 .doc-edit-icon {
   font-size: 13px;
-  color: var(--ink-muted);
+  color: var(--ink-secondary);
   opacity: 0;
   transform: translateX(-2px);
   transition: opacity 0.18s ease, transform 0.18s ease;
@@ -200,8 +208,11 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 12px;
-  color: var(--ink-muted);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  color: var(--ink-secondary);
 }
 
 .saved-indicator i {
@@ -235,7 +246,7 @@
   height: 30px;
   padding: 0 8px;
   border-radius: 7px;
-  color: var(--ink-primary);
+  color: var(--ink-secondary);
 }
 
 .zoom-picker:hover {
@@ -244,8 +255,10 @@
 }
 
 .zoom-value {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
   min-width: 38px;
   text-align: center;
 }
@@ -288,8 +301,10 @@
   background: transparent;
   color: var(--ink-secondary);
   font-family: var(--font-hand);
-  font-size: 14px;
-  line-height: 1.4;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
   cursor: pointer;
   transition: background-color 0.12s ease, color 0.12s ease;
 }
@@ -306,7 +321,7 @@
 
 .zoom-menu-item i {
   font-size: 14px;
-  color: var(--ink-muted);
+  color: var(--ink-secondary);
 }
 
 .zoom-menu-item.selected i {

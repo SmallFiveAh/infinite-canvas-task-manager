@@ -6,14 +6,11 @@ import './index.css'
  */
 function LeftSidebar({ activeTool, onToolChange, isToolLocked }) {
   const tools = [
-    { id: 'palette', icon: 'bi-palette-fill', label: '调色板', topGradient: true },
-    { id: 'select', icon: 'bi-pointer', label: '选择' },
-    { id: 'zoom', icon: 'bi-search', label: '缩放' },
-    { id: 'pencil', icon: 'bi-pencil', label: '铅笔', custom: 'pencil-curved' },
+    { id: 'palette', icon: 'bi-circle-square', label: '形状与流程图' },
     { id: 'text', icon: 'bi-type', label: '文字', framed: true },
-    { id: 'eraser', icon: 'bi-eraser-fill', label: '橡皮擦' },
+        { id: 'freedraw', icon: 'bi-suit-club-fill', label: '手绘', custom: 'freedraw-curve' },
+    { id: 'mindmap', icon: 'bi-diagram-3', label: '思维导图' },
     { id: 'sticky', icon: 'bi-sticky-fill', label: '便利贴', stickyNote: true },
-    { id: 'freedraw', icon: 'bi-suit-club-fill', label: '手绘', custom: 'freedraw-curve' },
     { id: 'table', icon: 'bi-grid-3x3-gap-fill', label: '表格', custom: 'table-icon' },
     { id: 'document', icon: 'bi-file-text', label: '文档', custom: 'doc-icon' },
     { id: 'list', icon: 'bi-list-check', label: '列表', custom: 'list-icon' },
@@ -63,11 +60,7 @@ function LeftSidebar({ activeTool, onToolChange, isToolLocked }) {
             title="更多"
             aria-label="更多选项"
           >
-            <span className="more-dots" aria-hidden="true">
-              <span />
-              <span />
-              <span />
-            </span>
+            <i className="bi bi-three-dots" aria-hidden="true" />
           </button>
         </div>
       </div>

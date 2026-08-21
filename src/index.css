@@ -38,12 +38,20 @@ html, body, #root {
 
 body {
   font-family: var(--font-hand);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background: var(--bg-canvas);
-  color: var(--ink-primary);
+  color: var(--ink-secondary);
 }
 
 button {
   font-family: var(--font-hand);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
 }
