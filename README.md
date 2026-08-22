@@ -1,7 +1,7 @@
 <div align="center">
   <img src="public/favicon.svg" alt="Logo" width="80" height="80" />
   <h1>Infinite Canvas Task Manager</h1>
-  <p>基于 React + Vite 的无限画布任务管理器 · 仿 Excalidraw 风格的可视化协作白板</p>
+  <p>基于 React + Vite 的无限画布任务管理器 · 风格简洁简单</p>
 
   <p align="center">
     <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
@@ -15,7 +15,7 @@
 
 ## ✨ 特性
 
-- 🖼️ **无限画布** — Excalidraw 风格点阵网格，支持拖拽平移与以鼠标为中心的滚轮缩放
+- 🖼️ **无限画布** — 风格无限画布点阵网格，支持拖拽平移与以鼠标为中心的滚轮缩放
 - 📝 **便利贴系统** — 支持矩形 / 异形（水滴、波浪、花朵、圆形、心形、齿轮）便签，8 种配色方案
 - 🎨 **便签样式面板** — 单击选择便签样式，拖放快速创建，交互流畅
 - 🔲 **框选与多选** — 框选多个便签，支持 Shift 追加选择，点击空白清空
