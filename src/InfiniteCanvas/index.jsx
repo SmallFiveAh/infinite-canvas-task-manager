@@ -23,6 +23,7 @@ function InfiniteCanvas({
   elements = [],
   onUpdateElement,
   onResizeElement,
+  onUpdateElements,
   selectedIds = [],
   onSelectionChange,
 }) {
@@ -78,6 +79,14 @@ function InfiniteCanvas({
     elementId: null,
     offsetX: 0, // 鼠标相对元素左上角的偏移（画布坐标系）
     offsetY: 0,
+  })
+
+  // 多选组拖拽状态：整组按位移一起移动
+  const groupDragRef = useRef({
+    isDragging: false,
+    startCanvasX: 0, // 鼠标按下时的画布坐标
+    startCanvasY: 0,
+    startPositions: {}, // { [id]: { x, y } } 各选中元素的起始位置
   })
 
   // 便签缩放拖拽状态（四角手柄拖拽）
@@ -304,6 +313,38 @@ function InfiniteCanvas({
   }, [elements, localToCanvas])
 
   /**
+   * 多选虚拟框鼠标按下：启动整组拖拽
+   *  - 记录鼠标起始画布坐标与各选中元素的初始位置
+   *  - stopPropagation 阻止冒泡到容器，避免触发单元素拖拽 / 平移 / 框选
+   */
+  const handleGroupDragMouseDown = useCallback((e) => {
+    if (e.button !== 0) return
+    e.stopPropagation()
+    const container = containerRef.current
+    if (!container) return
+    const rect = container.getBoundingClientRect()
+    const localX = e.clientX - rect.left
+    const localY = e.clientY - rect.top
+    const { x: canvasX, y: canvasY } = localToCanvas(localX, localY)
+    const curSelected = selectedIdsRef.current
+    if (curSelected.length < 2) return
+    // 记录所有选中元素的起始位置，后续按鼠标位移整体平移
+    const startPositions = {}
+    for (const el of elements) {
+      if (curSelected.includes(el.id)) {
+        startPositions[el.id] = { x: el.x, y: el.y }
+      }
+    }
+    groupDragRef.current = {
+      isDragging: true,
+      startCanvasX: canvasX,
+      startCanvasY: canvasY,
+      startPositions,
+    }
+    container.style.cursor = 'move'
+  }, [elements, localToCanvas])
+
+  /**
    * 判断点击是否命中某个便签元素（返回元素 or null）
    */
   const hitTestElement = useCallback((canvasX, canvasY) => {
@@ -444,6 +485,24 @@ function InfiniteCanvas({
       return
     }
 
+    // 多选组拖拽中：按鼠标位移整体平移所有选中元素
+    if (groupDragRef.current.isDragging) {
+      const rect = container.getBoundingClientRect()
+      const localX = e.clientX - rect.left
+      const localY = e.clientY - rect.top
+      const { x: canvasX, y: canvasY } = localToCanvas(localX, localY)
+      const { startCanvasX, startCanvasY, startPositions } = groupDragRef.current
+      const dx = canvasX - startCanvasX
+      const dy = canvasY - startCanvasY
+      const updates = Object.keys(startPositions).map((id) => ({
+        id,
+        x: startPositions[id].x + dx,
+        y: startPositions[id].y + dy,
+      }))
+      onUpdateElements?.(updates)
+      return
+    }
+
     // 便签元素拖拽中
     if (elementDragRef.current.isDragging) {
       const rect = container.getBoundingClientRect()
@@ -490,6 +549,19 @@ function InfiniteCanvas({
         startCanvasX: 0,
         startCanvasY: 0,
         origEl: null,
+      }
+      if (containerRef.current) {
+        containerRef.current.style.cursor = viewModeRef.current === 'hand' ? 'grab' : 'default'
+      }
+      return
+    }
+
+    if (groupDragRef.current.isDragging) {
+      groupDragRef.current = {
+        isDragging: false,
+        startCanvasX: 0,
+        startCanvasY: 0,
+        startPositions: {},
       }
       if (containerRef.current) {
         containerRef.current.style.cursor = viewModeRef.current === 'hand' ? 'grab' : 'default'
@@ -794,7 +866,8 @@ function InfiniteCanvas({
                 )}
 
                 {/* ===== 四角手柄：放在 wrapper 外层，永远不被 clip-path 裁剪 ===== */}
-                {isSelected && (
+                {/* 多选时隐藏单元素手柄，改由整组虚拟框统一移动 */}
+                {isSelected && selectedIds.length === 1 && (
                   <>
                     {[
                       { pos: 'top-left', left: -5, top: -5, cursor: 'nwse-resize' },
@@ -831,6 +904,33 @@ function InfiniteCanvas({
           return null
         })}
       </div>
+
+      {/* 多选虚拟框：包围所有选中元素，拖拽可整组移动 */}
+      {selectedIds.length >= 2 && (() => {
+        const selEls = elements.filter((el) => selectedIds.includes(el.id))
+        if (selEls.length < 2) return null
+        let minX = Infinity
+        let minY = Infinity
+        let maxX = -Infinity
+        let maxY = -Infinity
+        for (const el of selEls) {
+          minX = Math.min(minX, el.x)
+          minY = Math.min(minY, el.y)
+          maxX = Math.max(maxX, el.x + el.width)
+          maxY = Math.max(maxY, el.y + el.height)
+        }
+        const left = minX * scale + offset.x
+        const top = minY * scale + offset.y
+        const width = (maxX - minX) * scale
+        const height = (maxY - minY) * scale
+        return (
+          <div
+            className="group-selection-frame"
+            style={{ left, top, width, height }}
+            onMouseDown={handleGroupDragMouseDown}
+          />
+        )
+      })()}
 
       {marquee && (() => {
         const left = Math.min(marquee.startX, marquee.curX)
