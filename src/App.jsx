@@ -97,6 +97,21 @@ function App() {
     )
   }, [])
 
+  /**
+   * 批量更新元素位置（多选拖拽整组移动）
+   * @param {Array<{id, x, y}>} updates - 需要更新的元素及其新位置
+   */
+  const updateElementsBatch = useCallback((updates) => {
+    if (!updates || updates.length === 0) return
+    const map = new Map(updates.map((u) => [u.id, u]))
+    setElements((prev) =>
+      prev.map((el) => {
+        const u = map.get(el.id)
+        return u ? { ...el, x: u.x, y: u.y } : el
+      })
+    )
+  }, [])
+
   return (
     <div className="app-layout">
       <Toolbar
@@ -128,6 +143,7 @@ function App() {
         elements={elements}
         onUpdateElement={updateElementPosition}
         onResizeElement={resizeElement}
+        onUpdateElements={updateElementsBatch}
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
       />
