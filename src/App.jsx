@@ -1,7 +1,8 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
 import InfiniteCanvas from './InfiniteCanvas'
 import LeftSidebar from './leftSidebar'
 import Toolbar from './toolBar'
+import BottomBar from './bottomBar'
 import { DEFAULT_STICKY } from './stickyPalette'
 import './App.css'
 
@@ -112,6 +113,138 @@ function App() {
     )
   }, [])
 
+  /**
+   * 组合 ID 生成器
+   */
+  const groupIdRef = useRef(0)
+
+  /**
+   * 对齐 / 分布选中元素
+   *  - left / center-h / right：水平对齐到选区边界
+   *  - top / center-v / bottom：垂直对齐到选区边界
+   *  - distribute-h / distribute-v：等间距分布（首尾元素固定，中间元素重排）
+   *
+   * @param {string} type - 对齐/分布类型
+   */
+  const handleAlign = useCallback((type) => {
+    if (!selectedIds || selectedIds.length < 2) return
+    setElements((prev) => {
+      const selSet = new Set(selectedIds)
+      const sel = prev.filter((el) => selSet.has(el.id))
+      if (sel.length < 2) return prev
+
+      // 选区边界
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity
+      for (const el of sel) {
+        if (el.x < minX) minX = el.x
+        if (el.x + el.width > maxX) maxX = el.x + el.width
+        if (el.y < minY) minY = el.y
+        if (el.y + el.height > maxY) maxY = el.y + el.height
+      }
+      const centerH = (minX + maxX) / 2
+      const centerV = (minY + maxY) / 2
+
+      // 分布：至少需要 3 个元素
+      if (type === 'distribute-h' || type === 'distribute-v') {
+        if (sel.length < 3) return prev
+        const horizontal = type === 'distribute-h'
+        const sorted = [...sel].sort((a, b) =>
+          horizontal ? a.x - b.x : a.y - b.y
+        )
+        const first = sorted[0]
+        const last = sorted[sorted.length - 1]
+        const startEdge = horizontal ? first.x : first.y
+        const endEdge = horizontal ? last.x + last.width : last.y + last.height
+        const sumSizes = sorted.reduce(
+          (s, el) => s + (horizontal ? el.width : el.height), 0
+        )
+        const totalGap = endEdge - startEdge - sumSizes
+        const gap = totalGap / (sorted.length - 1)
+
+        const updates = {}
+        let cursor = startEdge
+        for (const el of sorted) {
+          updates[el.id] = horizontal
+            ? { x: cursor, y: el.y }
+            : { x: el.x, y: cursor }
+          cursor += (horizontal ? el.width : el.height) + gap
+        }
+        return prev.map((el) =>
+          updates[el.id] ? { ...el, ...updates[el.id] } : el
+        )
+      }
+
+      // 对齐
+      return prev.map((el) => {
+        if (!selSet.has(el.id)) return el
+        let { x, y } = el
+        switch (type) {
+          case 'left': x = minX; break
+          case 'center-h': x = centerH - el.width / 2; break
+          case 'right': x = maxX - el.width; break
+          case 'top': y = minY; break
+          case 'center-v': y = centerV - el.height / 2; break
+          case 'bottom': y = maxY - el.height; break
+          default: break
+        }
+        return { ...el, x, y }
+      })
+    })
+  }, [selectedIds])
+
+  /**
+   * 组合：为所有选中元素分配同一个 groupId
+   */
+  const handleGroup = useCallback(() => {
+    if (!selectedIds || selectedIds.length < 2) return
+    const gid = `group-${++groupIdRef.current}`
+    setElements((prev) => prev.map((el) =>
+      selectedIds.includes(el.id) ? { ...el, groupId: gid } : el
+    ))
+  }, [selectedIds])
+
+  /**
+   * 取消组合：移除选中元素所涉及的所有组合
+   */
+  const handleUngroup = useCallback(() => {
+    if (!selectedIds || selectedIds.length === 0) return
+    setElements((prev) => {
+      const selSet = new Set(selectedIds)
+      const touched = new Set()
+      for (const el of prev) {
+        if (selSet.has(el.id) && el.groupId) touched.add(el.groupId)
+      }
+      if (touched.size === 0) return prev
+      return prev.map((el) =>
+        touched.has(el.groupId) ? { ...el, groupId: undefined } : el
+      )
+    })
+  }, [selectedIds])
+
+  // 是否可组合 / 可取消组合
+  const canGroup = selectedIds.length >= 2
+  const canUngroup = useMemo(
+    () => elements.some((el) => selectedIds.includes(el.id) && el.groupId),
+    [elements, selectedIds]
+  )
+
+  // 快捷键：Ctrl/Cmd+G 组合，Ctrl/Cmd+Shift+G 取消组合
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const target = e.target
+      if (target && (target.isContentEditable ||
+        ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return
+      if (!(e.metaKey || e.ctrlKey)) return
+      const key = e.key.toLowerCase()
+      if (key !== 'g') return
+      e.preventDefault()
+      if (e.shiftKey) handleUngroup()
+      else handleGroup()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleGroup, handleUngroup])
+
   return (
     <div className="app-layout">
       <Toolbar
@@ -146,6 +279,14 @@ function App() {
         onUpdateElements={updateElementsBatch}
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
+      />
+      <BottomBar
+        selectedCount={selectedIds.length}
+        canGroup={canGroup}
+        canUngroup={canUngroup}
+        onAlign={handleAlign}
+        onGroup={handleGroup}
+        onUngroup={handleUngroup}
       />
     </div>
   )

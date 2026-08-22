@@ -420,26 +420,63 @@ function InfiniteCanvas({
     // 检测是否点中便签
     const hit = hitTestElement(canvasX, canvasY)
     if (hit) {
+      // 组合元素：点击组内任一元素即作用于整组
+      const groupMembers = hit.groupId
+        ? elements.filter((e) => e.groupId === hit.groupId).map((e) => e.id)
+        : null
+      const isGrouped = !!groupMembers
+
       // select 模式下：点击元素更新选中状态
       if (viewModeRef.current === 'select') {
         const curSelected = selectedIdsRef.current
         if (isShift) {
-          // Shift + 点击：切换单个元素选中（追加/取消）
-          const isAlreadySelected = curSelected.includes(hit.id)
-          const next = isAlreadySelected
-            ? curSelected.filter((id) => id !== hit.id)
-            : [...curSelected, hit.id]
-          onSelectionChange?.(next)
+          if (isGrouped) {
+            // Shift + 点击：切换整组选中（追加/取消）
+            const allIn = groupMembers.every((id) => curSelected.includes(id))
+            const next = allIn
+              ? curSelected.filter((id) => !groupMembers.includes(id))
+              : Array.from(new Set([...curSelected, ...groupMembers]))
+            onSelectionChange?.(next)
+          } else {
+            const isAlreadySelected = curSelected.includes(hit.id)
+            const next = isAlreadySelected
+              ? curSelected.filter((id) => id !== hit.id)
+              : [...curSelected, hit.id]
+            onSelectionChange?.(next)
+          }
+          // 组合元素 Shift+点击：仅切换选中，不进入拖拽（避免与混合选区不一致）
+          if (isGrouped) return
+        } else if (isGrouped) {
+          // 普通点击组合元素：选中整组（若未完全选中）
+          const allIn = groupMembers.every((id) => curSelected.includes(id))
+          if (!allIn) onSelectionChange?.(groupMembers)
         } else if (!curSelected.includes(hit.id)) {
           // 普通点击未选中的元素：单选该元素
           onSelectionChange?.([hit.id])
         }
       }
-      elementDragRef.current = {
-        isDragging: true,
-        elementId: hit.id,
-        offsetX: canvasX - hit.x,
-        offsetY: canvasY - hit.y,
+
+      // 启动拖拽：组合元素走整组拖拽，其余走单元素拖拽
+      if (isGrouped) {
+        const startPositions = {}
+        for (const el of elements) {
+          if (el.groupId === hit.groupId) {
+            startPositions[el.id] = { x: el.x, y: el.y }
+          }
+        }
+        groupDragRef.current = {
+          isDragging: true,
+          startCanvasX: canvasX,
+          startCanvasY: canvasY,
+          startPositions,
+        }
+      } else {
+        elementDragRef.current = {
+          isDragging: true,
+          elementId: hit.id,
+          offsetX: canvasX - hit.x,
+          offsetY: canvasY - hit.y,
+        }
       }
       container.style.cursor = 'move'
       return

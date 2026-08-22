@@ -1,0 +1,78 @@
+/* ========== 下方工具栏容器（吸底悬浮） ========== */
+.bottombar {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  pointer-events: none;
+}
+
+.bottombar-inner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg),
+              0 0 0 1px rgba(0, 0, 0, 0.02) inset;
+  pointer-events: auto;
+  backdrop-filter: blur(8px);
+  animation: bottombar-slide-up 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes bottombar-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========== SVG 图标：块级避免 inline 行盒空白 ========== */
+.bottombar .toolbar-btn svg {
+  display: block;
+  flex-shrink: 0;
+}
+
+/* ========== 按钮分组 ========== */
+.bottombar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* ========== 禁用态 ========== */
+.bottombar .toolbar-btn:disabled {
+  opacity: 0.38;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 768px) {
+  .bottombar {
+    bottom: 10px;
+  }
+
+  .bottombar-inner {
+    padding: 6px 8px;
+    border-radius: 14px;
+  }
+
+  .toolbar-divider {
+    height: 20px;
+    margin: 0 2px;
+  }
+
+  .bottombar .toolbar-btn {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+  }
+}
