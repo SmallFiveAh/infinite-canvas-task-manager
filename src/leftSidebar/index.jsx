@@ -278,7 +278,7 @@ function StickyPalettePopover({ anchorRef, wrapRef, onSelect }) {
     const sbRect = sidebarEl.getBoundingClientRect()
     // 局部坐标：相对 sidebar 容器左上角
     const localLeft = (btnRect.right - sbRect.left) + 12
-    const localTop = (btnRect.top - sbRect.top) - 4
+    const localTop = (btnRect.top - sbRect.top) - 286
     setPos({ left: localLeft, top: localTop })
     setReady(true)
   }, [anchorRef])
